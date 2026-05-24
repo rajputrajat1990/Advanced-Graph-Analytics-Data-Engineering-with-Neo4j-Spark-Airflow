@@ -731,3 +731,95 @@ WHERE name = "product_productId_unique"
 RETURN name, type, entityType, labelsOrTypes, properties, ownedIndex;
 ```
 
+# Step 58 — Create uniqueness constraint for Issue.issueId
+
+```bash
+CREATE CONSTRAINT issue_issueId_unique
+FOR (i:Issue)
+REQUIRE i.issueId IS UNIQUE;
+```
+
+# Step 59 — Verify Issue.issueId uniqueness constraint
+
+```bash
+SHOW CONSTRAINTS
+YIELD name, type, entityType, labelsOrTypes, properties, ownedIndex
+WHERE name = "issue_issueId_unique"
+RETURN name, type, entityType, labelsOrTypes, properties, ownedIndex;
+```
+
+# Step 60 — Create uniqueness constraint for Agent.agentId
+
+```bash
+CREATE CONSTRAINT agent_agentId_unique
+FOR (a:Agent)
+REQUIRE a.agentId IS UNIQUE;
+```
+
+# Step 61 — Verify Agent.agentId uniqueness constraint
+
+```bash
+SHOW CONSTRAINTS
+YIELD name, type, entityType, labelsOrTypes, properties, ownedIndex
+WHERE name = "agent_agentId_unique"
+RETURN name, type, entityType, labelsOrTypes, properties, ownedIndex;
+```
+
+# Step 62 — Final summary check for all Day 1 ID constraints
+
+```bash
+SHOW CONSTRAINTS
+YIELD name, type, entityType, labelsOrTypes, properties, ownedIndex
+WHERE name IN [
+  "customer_customerId_unique",
+  "ticket_ticketId_unique",
+  "product_productId_unique",
+  "issue_issueId_unique",
+  "agent_agentId_unique"
+]
+RETURN name,
+       type,
+       entityType,
+       labelsOrTypes,
+       properties,
+       ownedIndex
+ORDER BY name;
+```
+
+# Step 63 — Find nearby support entities from one customer
+
+```bash
+MATCH path = (c:Customer {customerId: "C001"})--{1,3}(connected)
+RETURN path
+LIMIT 25;
+```
+
+# Step 64 — Return readable details from the variable-length paths
+
+```bash
+MATCH path = (c:Customer {customerId: "C001"})--{1,3}(connected)
+RETURN
+  c.name AS customer,
+  labels(connected) AS connectedNodeLabels,
+  connected AS connectedNode,
+  length(path) AS hops
+ORDER BY hops, connectedNodeLabels
+LIMIT 25;
+```
+
+# Step 65 — Safer variable-length path using support relationship types
+
+```bash
+MATCH path =
+  (c:Customer {customerId: "C001"})
+  ((start)-[:RAISED|ABOUT|HAS_ISSUE|ASSIGNED_TO]-(next)){1,3}
+  (connected)
+RETURN
+  c.name AS customer,
+  labels(connected) AS connectedNodeLabels,
+  connected AS connectedNode,
+  length(path) AS hops
+ORDER BY hops, connectedNodeLabels
+LIMIT 25;
+```
+
