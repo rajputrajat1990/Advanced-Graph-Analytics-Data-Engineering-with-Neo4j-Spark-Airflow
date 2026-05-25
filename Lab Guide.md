@@ -823,3 +823,168 @@ ORDER BY hops, connectedNodeLabels
 LIMIT 25;
 ```
 
+# Step 66 — Basic UNWIND practice with support issue names
+
+```bash
+UNWIND ["Login Failure", "Payment Failure", "App Crash"] AS issueName
+RETURN issueName
+ORDER BY issueName;
+```
+
+# Step 67 — UNWIND a list of maps
+
+```bash
+UNWIND [
+  {issueId: "I001", name: "Login Failure", severity: "High"},
+  {issueId: "I002", name: "Payment Failure", severity: "Medium"},
+  {issueId: "I003", name: "App Crash", severity: "High"}
+] AS issue
+RETURN
+  issue.issueId AS issueId,
+  issue.name AS issueName,
+  issue.severity AS severity
+ORDER BY issueId;
+```
+
+# Step 68 — Use UNWIND + MERGE to add or match App Crash
+
+```bash
+UNWIND [
+  {issueId: "I003", name: "App Crash", severity: "High"}
+] AS issue
+MERGE (i:Issue {issueId: issue.issueId})
+SET
+  i.name = issue.name,
+  i.severity = issue.severity
+RETURN
+  i.issueId AS issueId,
+  i.name AS issueName,
+  i.severity AS severity;
+```
+
+# Step 69 — Verify all Issue nodes
+
+```bash
+MATCH (i:Issue)
+RETURN
+  i.issueId AS issueId,
+  i.name AS issueName,
+  i.severity AS severity
+ORDER BY issueId;
+```
+
+# Step 70 — Basic WITH chaining from customer to ticket to product
+
+```bash
+MATCH (c:Customer)-[:RAISED]->(t:Ticket)
+WITH c, t
+MATCH (t)-[:ABOUT]->(p:Product)
+RETURN
+  c.name AS customer,
+  t.ticketId AS ticketId,
+  t.title AS ticketTitle,
+  p.name AS product
+ORDER BY ticketId;
+```
+
+# Step 71 — Use WITH to aggregate ticket count per product
+
+```bash
+MATCH (t:Ticket)-[:ABOUT]->(p:Product)
+WITH
+  p,
+  count(t) AS ticketCount
+WHERE ticketCount >= 1
+RETURN
+  p.productId AS productId,
+  p.name AS productName,
+  ticketCount
+ORDER BY ticketCount DESC, productName;
+```
+
+# Step 72 — Use WITH and collect() to list tickets per product
+
+```bash
+MATCH (t:Ticket)-[:ABOUT]->(p:Product)
+WITH
+  p,
+  collect(t.ticketId) AS ticketIds,
+  count(t) AS ticketCount
+RETURN
+  p.productId AS productId,
+  p.name AS productName,
+  ticketCount,
+  ticketIds
+ORDER BY ticketCount DESC, productName;
+```
+
+# Step 73 — Use WITH ... WHERE to filter high-priority tickets
+
+```bash
+MATCH (c:Customer)-[:RAISED]->(t:Ticket)-[:ABOUT]->(p:Product)
+WITH
+  c,
+  t,
+  p,
+  t.priority AS priority
+WHERE priority = "High"
+RETURN
+  c.name AS customer,
+  t.ticketId AS ticketId,
+  t.title AS ticketTitle,
+  priority,
+  p.name AS product
+ORDER BY ticketId;
+```
+
+# Step 74 — Check whether APOC procedures are available
+
+```bash
+SHOW PROCEDURES
+YIELD name
+WHERE name STARTS WITH "apoc."
+RETURN name
+ORDER BY name
+LIMIT 20;
+```
+
+> it means that the APOC is not enabled/installed.
+
+# Step 75 — Identify your running Neo4j Docker container
+
+```bash
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+```
+
+# Step 76 — Check whether NEO4J_PLUGINS is set on the running container
+
+```bash
+docker inspect supportgraph-neo4j --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -i -E 'NEO4J_PLUGINS|NEO4JLABS_PLUGINS|apoc'
+```
+
+# Step 77 — Check APOC jar location inside the container
+
+```bash
+docker exec supportgraph-neo4j sh -c 'ls -la /var/lib/neo4j/labs 2>/dev/null; echo "--- plugins ---"; ls -la /var/lib/neo4j/plugins 2>/dev/null'
+```
+
+> APOC is packaged with Neo4j, but it is not installed/enabled yet.
+
+# Step 78 — Copy APOC jar into the plugins directory
+
+```bash
+docker exec supportgraph-neo4j sh -c 'cp /var/lib/neo4j/labs/apoc-2026.04.0-core.jar /var/lib/neo4j/plugins/apoc.jar && ls -la /var/lib/neo4j/plugins'
+```
+
+# Step 79 — Fix APOC jar ownership inside the container
+
+```bash
+docker exec supportgraph-neo4j sh -c 'chown neo4j:neo4j /var/lib/neo4j/plugins/apoc.jar && ls -la /var/lib/neo4j/plugins'
+```
+
+# Step 80 — Verify the exact APOC plugin filename
+
+```bash
+docker exec supportgraph-neo4j sh -c 'find /var/lib/neo4j/plugins -maxdepth 1 -type f -printf "%f\n"'
+```
+
