@@ -988,3 +988,71 @@ docker exec supportgraph-neo4j sh -c 'chown neo4j:neo4j /var/lib/neo4j/plugins/a
 docker exec supportgraph-neo4j sh -c 'find /var/lib/neo4j/plugins -maxdepth 1 -type f -printf "%f\n"'
 ```
 
+# Step 81 — Restart the Neo4j Docker container
+
+```bash
+docker restart supportgraph-neo4j
+```
+
+> Now, you will need to re-sign in using the password that was last seen on step 17.
+# Step 82 — Verify APOC is now visible in Neo4j
+
+```bash
+SHOW PROCEDURES
+YIELD name
+WHERE name STARTS WITH "apoc."
+RETURN name
+ORDER BY name
+LIMIT 20;
+```
+
+# Step 83 — Check APOC version
+
+```bash
+RETURN apoc.version() AS apocVersion;
+```
+
+# Step 84 — Use APOC built-in help
+
+```bash
+CALL apoc.help("text")
+YIELD name, type, text, signature
+RETURN
+  name,
+  type,
+  text,
+  signature
+ORDER BY name
+LIMIT 10;
+```
+
+# Step 86 — Run first EXPLAIN query
+
+```bash
+EXPLAIN
+MATCH (c:Customer)-[:RAISED]->(t:Ticket)
+RETURN
+  c.name AS customer,
+  t.ticketId AS ticketId;
+```
+
+# Step 87 — Run first safe PROFILE query
+
+```bash
+PROFILE
+MATCH (c:Customer)-[:RAISED]->(t:Ticket)
+RETURN
+  c.name AS customer,
+  t.ticketId AS ticketId;
+```
+
+# Day 1 agenda finishes here!!!!! Congratulations to you if you have come this far!!
+
+# Day 2 starts now
+
+# Step 1: Check whether GDS is already installed
+
+```bash
+RETURN gds.version() AS gdsVersion;
+```
+
