@@ -1056,3 +1056,1092 @@ RETURN
 RETURN gds.version() AS gdsVersion;
 ```
 
+> it is not present.
+
+# Step 2: Check whether Docker was configured with GDS
+
+```bash
+docker inspect supportgraph-neo4j --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -i -E 'NEO4J_PLUGINS|NEO4JLABS_PLUGINS|gds|graph'
+```
+
+> it is not present as well.
+
+# Step 3: Check whether a GDS plugin file exists inside the container
+
+```bash
+docker exec supportgraph-neo4j sh -c 'echo "--- plugins ---"; ls -la /var/lib/neo4j/plugins 2>/dev/null | grep -i -E "gds|graph-data-science|neo4j-graph|README|apoc" || true; echo "--- labs ---"; ls -la /var/lib/neo4j/labs 2>/dev/null | grep -i -E "gds|graph-data-science|neo4j-graph|README|apoc" || true'
+```
+
+# Step 4: Inspect data and plugin mounts for the current container
+
+```bash
+docker inspect supportgraph-neo4j --format '{{json .Mounts}}'
+```
+
+> This means your Neo4j database data is stored on the host path, not only inside the container. So if we recreate the container carefully and reuse the same /data mount, the graph data should remain available.
+
+# Step 5: Inspect current Docker runtime settings
+
+```bash
+docker inspect supportgraph-neo4j --format '
+Name: {{.Name}}
+Image: {{.Config.Image}}
+NetworkMode: {{.HostConfig.NetworkMode}}
+RestartPolicy: {{json .HostConfig.RestartPolicy}}
+PortBindings: {{json .HostConfig.PortBindings}}
+'
+```
+
+# Step 6: Stop and rename the current container as a rollback copy
+
+```bash
+docker stop supportgraph-neo4j && docker rename supportgraph-neo4j supportgraph-neo4j-before-gds
+```
+
+# Step 7: Create the new Neo4j container with APOC + GDS enabled
+
+```bash
+docker run -d \
+  --name supportgraph-neo4j \
+  --restart always \
+  -p 7474:7474 \
+  -p 7687:7687 \
+  -v /opt/supportgraph/neo4j/data:/data \
+  -e NEO4J_AUTH='neo4j/SupportGraph@123' \
+  -e NEO4J_PLUGINS='["apoc","graph-data-science"]' \
+  neo4j:2026.04.0
+```
+
+# Step 8: Check container logs for plugin installation
+
+```bash
+docker logs supportgraph-neo4j 2>&1 | grep -i -E "plugin|apoc|graph-data-science|gds|started|error|warn" | tail -n 80
+```
+
+# Step 9: Verify GDS from Neo4j Browser
+
+```bash
+RETURN gds.version() AS gdsVersion;
+```
+
+# Step 10: List available GDS operations
+
+```bash
+CALL gds.list()
+YIELD name, type, description
+RETURN
+  name,
+  type,
+  description
+ORDER BY name
+LIMIT 20;
+```
+
+# Step 11: Find available GDS graph catalogue operations
+
+```bash
+CALL gds.list()
+YIELD name, type, description
+WHERE name STARTS WITH "gds.graph."
+RETURN
+  name,
+  type,
+  description
+ORDER BY name
+LIMIT 30;
+```
+
+# Step 12: List current GDS graph projections
+
+```bash
+CALL gds.graph.list();
+```
+
+# Step 13: Inspect the exact gds.graph.project signature
+
+```bash
+CALL gds.list()
+YIELD name, type, signature, description
+WHERE name IN ["gds.graph.project", "gds.graph.project.estimate"]
+RETURN
+  name,
+  type,
+  signature,
+  description
+ORDER BY name;
+```
+
+# Step 14: Check whether supportGraph already exists
+
+```bash
+RETURN gds.graph.exists("supportGraph") AS graphExists;
+```
+
+# Step 15: Create the first supportGraph GDS projection
+
+```bash
+CALL gds.graph.project(
+  'supportGraph',
+  ['Customer', 'Ticket', 'Product'],
+  ['RAISED', 'ABOUT']
+)
+YIELD
+  graphName,
+  nodeCount,
+  relationshipCount,
+  projectMillis
+RETURN
+  graphName,
+  nodeCount,
+  relationshipCount,
+  projectMillis;
+```
+
+# Step 16: Confirm supportGraph in the GDS graph catalogue
+
+```bash
+CALL gds.graph.list()
+YIELD graphName, nodeCount, relationshipCount
+WHERE graphName = "supportGraph"
+RETURN
+  graphName,
+  nodeCount,
+  relationshipCount;
+```
+
+# Step 17: Inspect Degree Centrality procedure signatures
+
+```bash
+CALL gds.list()
+YIELD name, type, signature, description
+WHERE name STARTS WITH "gds.degree."
+RETURN
+  name,
+  type,
+  signature,
+  description
+ORDER BY name;
+```
+
+# Step 18: Run Degree Centrality in stream mode
+
+```bash
+CALL gds.degree.stream(
+  'supportGraph',
+  { orientation: 'UNDIRECTED' }
+)
+YIELD nodeId, score
+RETURN
+  labels(gds.util.asNode(nodeId)) AS labels,
+  coalesce(
+    gds.util.asNode(nodeId).name,
+    gds.util.asNode(nodeId).ticketId,
+    gds.util.asNode(nodeId).productId
+  ) AS nodeNameOrId,
+  score AS degreeScore
+ORDER BY degreeScore DESC, nodeNameOrId;
+```
+
+# Step 19: Run Degree Centrality in stats mode
+
+```bash
+CALL gds.degree.stats(
+  'supportGraph',
+  { orientation: 'UNDIRECTED' }
+)
+YIELD centralityDistribution, computeMillis
+RETURN
+  centralityDistribution.min AS minDegree,
+  centralityDistribution.mean AS meanDegree,
+  centralityDistribution.max AS maxDegree,
+  computeMillis;
+```
+
+# Step 20: Check whether degreeScore already exists
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product
+RETURN
+  labels(n) AS labels,
+  count(n) AS totalNodes,
+  count(n.degreeScore) AS nodesWithDegreeScore
+ORDER BY labels;
+```
+
+# Step 21: Write Degree Centrality back to Neo4j
+
+```bash
+CALL gds.degree.write(
+  'supportGraph',
+  {
+    orientation: 'UNDIRECTED',
+    writeProperty: 'degreeScore'
+  }
+)
+YIELD
+  centralityDistribution,
+  nodePropertiesWritten,
+  computeMillis,
+  writeMillis
+RETURN
+  centralityDistribution.min AS minDegree,
+  centralityDistribution.mean AS meanDegree,
+  centralityDistribution.max AS maxDegree,
+  nodePropertiesWritten,
+  computeMillis,
+  writeMillis;
+```
+
+# Step 22: Verify degreeScore on Neo4j nodes
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product
+RETURN
+  labels(n) AS labels,
+  coalesce(n.name, n.ticketId, n.productId) AS nodeNameOrId,
+  n.degreeScore AS degreeScore
+ORDER BY degreeScore DESC, nodeNameOrId;
+```
+
+# Step 23: Inspect actual Ticket/Issue/Agent relationship types
+
+```bash
+MATCH (a)-[r]->(b)
+WHERE
+  a:Ticket OR b:Ticket OR
+  a:Issue OR b:Issue OR
+  a:Agent OR b:Agent
+RETURN
+  labels(a) AS fromLabels,
+  type(r) AS relationshipType,
+  labels(b) AS toLabels,
+  count(*) AS relationshipCount
+ORDER BY
+  relationshipType,
+  fromLabels,
+  toLabels;
+```
+
+# Step 24: Check whether supportGraphFull already exists
+
+```bash
+RETURN gds.graph.exists("supportGraphFull") AS graphExists;
+```
+
+# Step 25: Create the richer supportGraphFull projection
+
+```bash
+CALL gds.graph.project(
+  'supportGraphFull',
+  ['Customer', 'Ticket', 'Product', 'Agent', 'Issue'],
+  ['RAISED', 'ABOUT', 'ASSIGNED_TO', 'HAS_ISSUE']
+)
+YIELD
+  graphName,
+  nodeCount,
+  relationshipCount,
+  projectMillis
+RETURN
+  graphName,
+  nodeCount,
+  relationshipCount,
+  projectMillis;
+```
+
+# Step 26: Confirm supportGraphFull in the GDS graph catalogue
+
+```bash
+CALL gds.graph.list()
+YIELD graphName, nodeCount, relationshipCount
+WHERE graphName = "supportGraphFull"
+RETURN
+  graphName,
+  nodeCount,
+  relationshipCount;
+```
+
+# Step 27: Run Degree Centrality stream mode on supportGraphFull
+
+```bash
+CALL gds.degree.stream(
+  'supportGraphFull',
+  { orientation: 'UNDIRECTED' }
+)
+YIELD nodeId, score
+RETURN
+  labels(gds.util.asNode(nodeId)) AS labels,
+  coalesce(
+    gds.util.asNode(nodeId).name,
+    gds.util.asNode(nodeId).ticketId,
+    gds.util.asNode(nodeId).productId,
+    gds.util.asNode(nodeId).issueId,
+    gds.util.asNode(nodeId).agentId
+  ) AS nodeNameOrId,
+  score AS degreeScore
+ORDER BY degreeScore DESC, nodeNameOrId;
+```
+
+# Step 28: Run Degree Centrality stats mode on supportGraphFull
+
+```bash
+CALL gds.degree.stats(
+  'supportGraphFull',
+  { orientation: 'UNDIRECTED' }
+)
+YIELD centralityDistribution, computeMillis
+RETURN
+  centralityDistribution.min AS minDegree,
+  centralityDistribution.mean AS meanDegree,
+  centralityDistribution.max AS maxDegree,
+  computeMillis;
+```
+
+# Step 29: Check whether fullDegreeScore already exists
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  count(n) AS totalNodes,
+  count(n.fullDegreeScore) AS nodesWithFullDegreeScore
+ORDER BY labels;
+```
+
+# Step 30: Write richer Degree Centrality back to Neo4j
+
+```bash
+CALL gds.degree.write(
+  'supportGraphFull',
+  {
+    orientation: 'UNDIRECTED',
+    writeProperty: 'fullDegreeScore'
+  }
+)
+YIELD
+  centralityDistribution,
+  nodePropertiesWritten,
+  computeMillis,
+  writeMillis
+RETURN
+  centralityDistribution.min AS minDegree,
+  centralityDistribution.mean AS meanDegree,
+  centralityDistribution.max AS maxDegree,
+  nodePropertiesWritten,
+  computeMillis,
+  writeMillis;
+```
+
+# Step 31: Verify fullDegreeScore on Neo4j nodes
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  coalesce(
+    n.name,
+    n.ticketId,
+    n.productId,
+    n.issueId,
+    n.agentId
+  )
+```
+
+# Step 31 retry: Verify fullDegreeScore explicitly
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  coalesce(
+    n.name,
+    n.ticketId,
+    n.productId,
+    n.issueId,
+    n.agentId
+  ) AS nodeNameOrId,
+  properties(n) AS allProperties,
+  n.fullDegreeScore AS fullDegreeScore
+ORDER BY fullDegreeScore DESC, nodeNameOrId;
+```
+
+# Step 32: Compare degreeScore vs fullDegreeScore
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  coalesce(
+    n.name,
+    n.ticketId,
+    n.productId,
+    n.issueId,
+    n.agentId
+  ) AS nodeNameOrId,
+  n.degreeScore AS degreeScore,
+  n.fullDegreeScore AS fullDegreeScore
+ORDER BY fullDegreeScore DESC, nodeNameOrId;
+```
+
+# Step 33: Inspect PageRank procedure signatures
+
+```bash
+CALL gds.list()
+YIELD name, type AS operationType, signature, description
+WHERE name STARTS WITH "gds.pageRank."
+RETURN
+  name,
+  operationType,
+  signature,
+  description
+```
+
+# Step 34: Run PageRank stream mode on supportGraphFull
+
+```bash
+CALL gds.pageRank.stream(
+  'supportGraphFull',
+  {
+    maxIterations: 20,
+    dampingFactor: 0.85
+  }
+)
+YIELD nodeId, score
+RETURN
+  labels(gds.util.asNode(nodeId)) AS labels,
+  coalesce(
+    gds.util.asNode(nodeId).name,
+    gds.util.asNode(nodeId).ticketId,
+    gds.util.asNode(nodeId).productId,
+    gds.util.asNode(nodeId).issueId,
+    gds.util.asNode(nodeId).agentId
+  ) AS nodeNameOrId,
+  score AS pageRankScore
+ORDER BY pageRankScore DESC, nodeNameOrId;
+```
+
+# Step 35: Run PageRank stats mode on supportGraphFull
+
+```bash
+CALL gds.pageRank.stats(
+  'supportGraphFull',
+  {
+    maxIterations: 20,
+    dampingFactor: 0.85
+  }
+)
+YIELD
+  ranIterations,
+  didConverge,
+  centralityDistribution,
+  computeMillis
+RETURN
+  ranIterations,
+  didConverge,
+  centralityDistribution.min AS minPageRank,
+  centralityDistribution.mean AS meanPageRank,
+  centralityDistribution.max AS maxPageRank,
+  computeMillis;
+```
+
+# Step 36: Check whether pageRankScore already exists
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  count(n) AS totalNodes,
+  count(n.pageRankScore) AS nodesWithPageRankScore
+ORDER BY labels;
+```
+
+# Step 37: Write PageRank back to Neo4j
+
+```bash
+CALL gds.pageRank.write(
+  'supportGraphFull',
+  {
+    maxIterations: 20,
+    dampingFactor: 0.85,
+    writeProperty: 'pageRankScore'
+  }
+)
+YIELD
+  ranIterations,
+  didConverge,
+  centralityDistribution,
+  nodePropertiesWritten,
+  computeMillis,
+  writeMillis
+RETURN
+  ranIterations,
+  didConverge,
+  centralityDistribution.min AS minPageRank,
+  centralityDistribution.mean AS meanPageRank,
+  centralityDistribution.max AS maxPageRank,
+  nodePropertiesWritten,
+  computeMillis,
+  writeMillis;
+```
+
+# Step 38: Verify pageRankScore on Neo4j nodes
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  coalesce(
+    n.name,
+    n.ticketId,
+    n.productId,
+    n.issueId,
+    n.agentId
+  ) AS nodeNameOrId,
+  n.pageRankScore AS pageRankScore
+ORDER BY pageRankScore DESC, nodeNameOrId;
+```
+
+# Step 39: Compare fullDegreeScore vs pageRankScore
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+WITH
+  labels(n) AS labels,
+  coalesce(
+    n.name,
+    n.ticketId,
+    n.productId,
+    n.issueId,
+    n.agentId
+  ) AS nodeNameOrId,
+  n.fullDegreeScore AS fullDegreeScore,
+  n.pageRankScore AS pageRankScore
+RETURN
+  labels,
+  nodeNameOrId,
+  fullDegreeScore,
+  pageRankScore
+ORDER BY pageRankScore DESC;
+```
+
+# Step 40: Inspect Betweenness Centrality procedure signatures
+
+```bash
+CALL gds.list()
+YIELD name, type AS operationType, signature, description
+WHERE name STARTS WITH "gds.betweenness."
+RETURN
+  name,
+  operationType,
+  signature,
+  description
+ORDER BY name;
+```
+
+# Step 41: Run Betweenness Centrality stream mode
+
+```bash
+CALL gds.betweenness.stream('supportGraphFull')
+YIELD nodeId, score
+RETURN
+  labels(gds.util.asNode(nodeId)) AS labels,
+  coalesce(
+    gds.util.asNode(nodeId).name,
+    gds.util.asNode(nodeId).ticketId,
+    gds.util.asNode(nodeId).productId,
+    gds.util.asNode(nodeId).issueId,
+    gds.util.asNode(nodeId).agentId
+  ) AS nodeNameOrId,
+  score AS betweennessScore
+ORDER BY betweennessScore DESC, nodeNameOrId;
+```
+
+# Step 42: Run Betweenness Centrality stats mode
+
+```bash
+CALL gds.betweenness.stats('supportGraphFull')
+YIELD centralityDistribution, computeMillis
+RETURN
+  centralityDistribution.min AS minBetweenness,
+  centralityDistribution.mean AS meanBetweenness,
+  centralityDistribution.max AS maxBetweenness,
+  computeMillis;
+```
+
+# Step 43: Check whether betweennessScore already exists
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  count(n) AS totalNodes,
+  count(n.betweennessScore) AS nodesWithBetweennessScore
+ORDER BY labels;
+```
+
+# Step 44: Write Betweenness Centrality back to Neo4j
+
+```bash
+CALL gds.betweenness.write(
+  'supportGraphFull',
+  {
+    writeProperty: 'betweennessScore'
+  }
+)
+YIELD
+  centralityDistribution,
+  nodePropertiesWritten,
+  computeMillis,
+  writeMillis
+RETURN
+  centralityDistribution.min AS minBetweenness,
+  centralityDistribution.mean AS meanBetweenness,
+  centralityDistribution.max AS maxBetweenness,
+  nodePropertiesWritten,
+  computeMillis,
+  writeMillis;
+```
+
+# Step 45: Verify betweennessScore on Neo4j nodes
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  coalesce(
+    n.name,
+    n.ticketId,
+    n.productId,
+    n.issueId,
+    n.agentId
+  ) AS nodeNameOrId,
+  n.betweennessScore AS betweennessScore
+ORDER BY betweennessScore DESC, nodeNameOrId;
+```
+
+# Step 46: Compare centrality scores together
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+WITH
+  labels(n) AS labels,
+  coalesce(
+    n.name,
+    n.ticketId,
+    n.productId,
+    n.issueId,
+    n.agentId
+  ) AS nodeNameOrId,
+  n.fullDegreeScore AS fullDegreeScore,
+  n.pageRankScore AS pageRankScore,
+  n.betweennessScore AS betweennessScore
+RETURN
+  labels,
+  nodeNameOrId,
+  fullDegreeScore,
+  pageRankScore,
+  betweennessScore
+ORDER BY
+  betweennessScore DESC,
+  pageRankScore DESC,
+  fullDegreeScore DESC,
+  nodeNameOrId;
+```
+
+> Degree Centrality      → Who is most connected?
+> PageRank               → Who is most influential?
+> Betweenness Centrality → Who acts as a bridge?
+> Louvain.                  → Which nodes naturally group together?
+
+# Step 47: Inspect Louvain procedure signatures
+
+```bash
+CALL gds.list()
+YIELD name, type AS operationType, signature, description
+WHERE name STARTS WITH "gds.louvain."
+RETURN
+  name,
+  operationType,
+  signature,
+  description
+ORDER BY name;
+```
+
+# Step 48: Inspect supportGraphFull projection schema before Louvain
+
+```bash
+CALL gds.graph.list()
+YIELD graphName, nodeCount, relationshipCount, schema
+WHERE graphName = 'supportGraphFull'
+RETURN
+  graphName,
+  nodeCount,
+  relationshipCount,
+  schema;
+```
+
+# Step 49: Check whether supportGraphLouvain already exists
+
+```bash
+CALL gds.graph.list()
+YIELD graphName, nodeCount, relationshipCount, schema
+WHERE graphName = 'supportGraphLouvain'
+RETURN
+  graphName,
+  nodeCount,
+  relationshipCount,
+  schema;
+```
+
+# Step 50: Create supportGraphLouvain as an undirected projection
+
+```bash
+MATCH (source)
+WHERE source:Customer
+   OR source:Ticket
+   OR source:Product
+   OR source:Agent
+   OR source:Issue
+
+OPTIONAL MATCH (source)-[r]->(target)
+WHERE r IS NULL
+   OR (
+        type(r) IN ['RAISED', 'ABOUT', 'ASSIGNED_TO', 'HAS_ISSUE']
+        AND (
+          target:Customer
+          OR target:Ticket
+          OR target:Product
+          OR target:Agent
+          OR target:Issue
+        )
+      )
+
+RETURN gds.graph.project(
+  'supportGraphLouvain',
+  source,
+  target,
+  {},
+  {
+    undirectedRelationshipTypes: ['*']
+  }
+)
+```
+
+# Step 51: Confirm supportGraphLouvain in graph catalogue
+
+```bash
+CALL gds.graph.list()
+YIELD graphName, nodeCount, relationshipCount
+WHERE graphName = 'supportGraphLouvain'
+RETURN
+  graphName,
+  nodeCount,
+  relationshipCount;
+```
+
+# Step 52: Run Louvain stream mode on supportGraphLouvain
+
+```bash
+CALL gds.louvain.stream('supportGraphLouvain')
+YIELD nodeId, communityId, intermediateCommunityIds
+RETURN
+  labels(gds.util.asNode(nodeId)) AS labels,
+  coalesce(
+    gds.util.asNode(nodeId).name,
+    gds.util.asNode(nodeId).ticketId,
+    gds.util.asNode(nodeId).productId,
+    gds.util.asNode(nodeId).issueId,
+    gds.util.asNode(nodeId).agentId
+  ) AS nodeNameOrId,
+  communityId,
+  intermediateCommunityIds
+ORDER BY communityId, nodeNameOrId;
+```
+
+# Step 53: Run Louvain stats mode on supportGraphLouvain
+
+```bash
+CALL gds.louvain.stats('supportGraphLouvain')
+YIELD
+  communityCount,
+  ranLevels,
+  modularity,
+  modularities,
+  communityDistribution,
+  computeMillis
+RETURN
+  communityCount,
+  ranLevels,
+  modularity,
+  modularities,
+  communityDistribution.min AS minCommunitySize,
+  communityDistribution.mean AS meanCommunitySize,
+  communityDistribution.max AS maxCommunitySize,
+  computeMillis;
+```
+
+# Step 54: Check whether louvainCommunityId already exists
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  count(n) AS totalNodes,
+  count(n.louvainCommunityId) AS nodesWithLouvainCommunityId
+ORDER BY labels;
+```
+
+# Step 55: Write Louvain community IDs back to Neo4j
+
+```bash
+CALL gds.louvain.write(
+  'supportGraphLouvain',
+  {
+    writeProperty: 'louvainCommunityId'
+  }
+)
+YIELD
+  communityCount,
+  ranLevels,
+  modularity,
+  modularities,
+  communityDistribution,
+  nodePropertiesWritten,
+  computeMillis,
+  writeMillis
+RETURN
+  communityCount,
+  ranLevels,
+  modularity,
+  modularities,
+  communityDistribution.min AS minCommunitySize,
+  communityDistribution.mean AS meanCommunitySize,
+  communityDistribution.max AS maxCommunitySize,
+  nodePropertiesWritten,
+  computeMillis,
+  writeMillis;
+```
+
+# Step 56: Verify louvainCommunityId on Neo4j nodes
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  coalesce(
+    n.name,
+    n.ticketId,
+    n.productId,
+    n.issueId,
+    n.agentId
+  ) AS nodeNameOrId,
+  n.louvainCommunityId AS louvainCommunityId
+ORDER BY louvainCommunityId, nodeNameOrId;
+```
+
+# Step 57: Compare centrality scores with Louvain community
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+WITH
+  labels(n) AS labels,
+  coalesce(
+    n.name,
+    n.ticketId,
+    n.productId,
+    n.issueId,
+    n.agentId
+  ) AS nodeNameOrId,
+  n.fullDegreeScore AS fullDegreeScore,
+  n.pageRankScore AS pageRankScore,
+  n.betweennessScore AS betweennessScore,
+  n.louvainCommunityId AS louvainCommunityId
+RETURN
+  labels,
+  nodeNameOrId,
+  fullDegreeScore,
+  pageRankScore,
+  betweennessScore,
+  louvainCommunityId
+ORDER BY
+  louvainCommunityId,
+  betweennessScore DESC,
+  pageRankScore DESC,
+  fullDegreeScore DESC,
+  nodeNameOrId;
+```
+
+# Step 58: Inspect Label Propagation procedure signatures
+
+```bash
+CALL gds.list()
+YIELD name, type AS operationType, signature, description
+WHERE name STARTS WITH "gds.labelPropagation."
+RETURN
+  name,
+  operationType,
+  signature,
+  description
+ORDER BY name;
+```
+
+# Step 59: Run Label Propagation stream mode
+
+```bash
+CALL gds.labelPropagation.stream('supportGraphLouvain')
+YIELD nodeId, communityId
+RETURN
+  labels(gds.util.asNode(nodeId)) AS labels,
+  coalesce(
+    gds.util.asNode(nodeId).name,
+    gds.util.asNode(nodeId).ticketId,
+    gds.util.asNode(nodeId).productId,
+    gds.util.asNode(nodeId).issueId,
+    gds.util.asNode(nodeId).agentId
+  ) AS nodeNameOrId,
+  communityId AS labelPropagationCommunityId
+ORDER BY labelPropagationCommunityId, nodeNameOrId;
+```
+
+# Step 61: Run Label Propagation stats mode
+
+```bash
+CALL gds.labelPropagation.stats('supportGraphLouvain')
+YIELD
+  communityCount,
+  ranIterations,
+  didConverge,
+  communityDistribution,
+  computeMillis
+RETURN
+  communityCount,
+  ranIterations,
+  didConverge,
+  communityDistribution.min AS minCommunitySize,
+  communityDistribution.mean AS meanCommunitySize,
+  communityDistribution.max AS maxCommunitySize,
+  computeMillis;
+```
+
+# Step 62: Check whether labelPropagationCommunityId already exists
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  count(n) AS totalNodes,
+  count(n.labelPropagationCommunityId) AS nodesWithLabelPropagationCommunityId
+ORDER BY labels;
+```
+
+# Step 63: Write Label Propagation communities back to Neo4j
+
+```bash
+CALL gds.labelPropagation.write(
+  'supportGraphLouvain',
+  {
+    writeProperty: 'labelPropagationCommunityId'
+  }
+)
+YIELD
+  communityCount,
+  ranIterations,
+  didConverge,
+  communityDistribution,
+  nodePropertiesWritten,
+  computeMillis,
+  writeMillis
+RETURN
+  communityCount,
+  ranIterations,
+  didConverge,
+  communityDistribution.min AS minCommunitySize,
+  communityDistribution.mean AS meanCommunitySize,
+  communityDistribution.max AS maxCommunitySize,
+  nodePropertiesWritten,
+  computeMillis,
+  writeMillis;
+```
+
+# Step 64: Verify labelPropagationCommunityId on Neo4j nodes
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  coalesce(
+    n.name,
+    n.ticketId,
+    n.productId,
+    n.issueId,
+    n.agentId
+  ) AS nodeNameOrId,
+  n.labelPropagationCommunityId AS labelPropagationCommunityId
+ORDER BY labelPropagationCommunityId, nodeNameOrId;
+```
+
+# Step 65: Compare Louvain vs Label Propagation communities
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  coalesce(
+    n.name,
+    n.ticketId,
+    n.productId,
+    n.issueId,
+    n.agentId
+  ) AS nodeNameOrId,
+  n.louvainCommunityId AS louvainCommunityId,
+  n.labelPropagationCommunityId AS labelPropagationCommunityId
+ORDER BY
+  louvainCommunityId,
+  labelPropagationCommunityId,
+  nodeNameOrId;
+```
+
+# Step 66: Final combined analytics view
+
+```bash
+MATCH (n)
+WHERE n:Customer OR n:Ticket OR n:Product OR n:Agent OR n:Issue
+RETURN
+  labels(n) AS labels,
+  coalesce(
+    n.name,
+    n.ticketId,
+    n.productId,
+    n.issueId,
+    n.agentId
+  ) AS nodeNameOrId,
+  n.fullDegreeScore AS fullDegreeScore,
+  n.pageRankScore AS pageRankScore,
+  n.betweennessScore AS betweennessScore,
+  n.louvainCommunityId AS louvainCommunityId,
+  n.labelPropagationCommunityId AS labelPropagationCommunityId
+ORDER BY
+  louvainCommunityId,
+  labelPropagationCommunityId,
+  betweennessScore DESC,
+  pageRankScore DESC,
+  fullDegreeScore DESC,
+  nodeNameOrId;
+```
