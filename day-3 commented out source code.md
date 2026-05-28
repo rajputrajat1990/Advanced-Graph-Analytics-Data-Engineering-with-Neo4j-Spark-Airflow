@@ -2975,13 +2975,6 @@ ORDER BY articleId;
 //
 // That relationship makes the graph more useful for traversal, recommendations,
 // support workflows, and future RAG-style retrieval.
-//
-// Production note:
-// The pasted query used -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the actual Cypher arrow:
-//
-//     MERGE (ka)-[:SOLVES]->(i)
-
 ```
 
 # Step 11 — Verify SOLVES relationship count
@@ -3226,12 +3219,6 @@ RETURN
 //     3. Match KnowledgeArticle.issueType to Issue.name.
 //     4. Create SOLVES relationships.
 //     5. Count SOLVES relationships to confirm the graph connections exist.
-//
-// Production note:
-// The pasted query used -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the actual Cypher arrow:
-//
-//     MATCH (:KnowledgeArticle)-[r:SOLVES]->(:Issue)
 ```
 
 # Step 12 — Verify readable KnowledgeArticle -> SOLVES -> Issue paths
@@ -3627,12 +3614,6 @@ ORDER BY articleId;
 //
 // So this query helps students understand that Neo4j is designed to answer
 // connected-data questions, not just return isolated records.
-//
-// Production note:
-// The pasted query used -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the actual Cypher arrow:
-//
-//     MATCH path = (ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
 ```
 
 # Step 13 — Create DocumentChunk nodes and connect them to articles
@@ -4304,12 +4285,6 @@ ORDER BY articleId, chunkOrder;
 // This is a strong foundation for vector search and RAG because the system can
 // retrieve a specific relevant chunk while still tracing it back to the complete
 // knowledge article.
-//
-// Production note:
-// The pasted query used -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the actual Cypher arrow:
-//
-//     MERGE (dc)-[:PART_OF]->(ka)
 ```
 
 # Step 14 — Verify PART_OF relationship count
@@ -4581,13 +4556,6 @@ RETURN
 //     3. Connect each DocumentChunk to its parent KnowledgeArticle.
 //     4. Count PART_OF relationships to confirm the graph connections exist.
 //     5. Later, use these relationships for retrieval, traceability, and RAG.
-//
-// Production note:
-// The pasted query used -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the actual Cypher arrow:
-//
-//     MATCH (:DocumentChunk)-[r:PART_OF]->(:KnowledgeArticle)
-``
 ```
 
 # Step 15 — Verify readable DocumentChunk -> PART_OF -> KnowledgeArticle paths
@@ -5010,12 +4978,6 @@ ORDER BY articleId, chunkOrder;
 // This connection is very important for RAG-style systems because when a chunk
 // is retrieved, the system can trace it back to the original article, title,
 // source, issue type, and other surrounding context.
-//
-// Production note:
-// The pasted query used -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the actual Cypher arrow:
-//
-//     MATCH path = (dc:DocumentChunk)-[:PART_OF]->(ka:KnowledgeArticle)
 ```
 
 # Step 16 — Check existing vector indexes
@@ -8478,12 +8440,6 @@ ORDER BY score DESC;
 //
 // That means the system can produce answers that are not only relevant, but also
 // explainable, auditable, and connected to business context.
-//
-// Production note:
-// Your pasted query contains -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the real Cypher arrow:
-//
-//     MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
 ```
 
 # Step 24A — Final Day 3 validation summary
@@ -9208,13 +9164,6 @@ RETURN
 //
 // This is exactly the kind of query we run at the end of a lab or ingestion
 // pipeline to prove that all required components are in place.
-//
-// Production note:
-// Your pasted query contains -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the real Cypher arrow:
-//
-//     MATCH (:KnowledgeArticle)-[s:SOLVES]->(:Issue)
-//     MATCH (:DocumentChunk)-[p:PART_OF]->(:KnowledgeArticle)
 ```
 
 # Step 24B — Final vector index validation summary
@@ -10044,13 +9993,6 @@ RETURN
 // This is a good checkpoint before running graph-enhanced vector search because
 // it confirms that both the semantic-search data and the relationship context
 // are present.
-//
-// Production note:
-// Your pasted query contains -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the real Cypher arrow:
-//
-//     MATCH (:KnowledgeArticle)-[s:SOLVES]->(:Issue)
-//     MATCH (:DocumentChunk)-[p:PART_OF]->(:KnowledgeArticle)
 ```
 
 # Addendum A — Step A2: Detect orphan knowledge graph records
@@ -10582,13 +10524,6 @@ RETURN
 //
 // A clean result means the graph is structurally connected and semantically
 // ready for vector retrieval.
-//
-// Production note:
-// Your pasted query contains -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the real Cypher arrow:
-//
-//     MATCH (ka)-[:SOLVES]->(:Issue)
-//     MATCH (dc)-[:PART_OF]->(:KnowledgeArticle)
 
 ```
 
@@ -10972,12 +10907,6 @@ ORDER BY issueId;
 // or:
 //
 //     "Which issues have enough troubleshooting coverage?"
-//
-// Production note:
-// Your pasted query contains -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the real Cypher arrow:
-//
-//     OPTIONAL MATCH (ka:KnowledgeArticle)-[:SOLVES]->(i)
 ```
 
 # Addendum A — Step A4: Validate chunk coverage per article
@@ -11397,12 +11326,6 @@ ORDER BY articleId;
 //
 // If those checks pass, the article-to-chunk layer is ready for vector-search
 // and RAG-style retrieval.
-//
-// Production note:
-// Your pasted query contains -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the real Cypher arrow:
-//
-//     MATCH (dc:DocumentChunk)-[:PART_OF]->(ka:KnowledgeArticle)
 ```
 
 # Addendum A — Step A5: Validate vector index readiness
@@ -12449,13 +12372,6 @@ ORDER BY score DESC;
 //
 // This proves that the graph is not only searchable, but also explainable and
 // ready for RAG-style retrieval demonstrations.
-//
-// Production note:
-// Your pasted query contains -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the real Cypher arrow:
-//
-//     MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
-
 ```
 
 # Addendum A — Step A7: Controlled retrieval tests for Payment Failure and App Crash
@@ -13196,13 +13112,6 @@ ORDER BY
 //
 // This proves that the graph is ready for explainable, graph-enhanced RAG
 // retrieval across multiple intent types.
-//
-// Production note:
-// Your pasted query contains -&gt;, which is the HTML-escaped form of ->.
-// In Neo4j Browser or Cypher Shell, use the real Cypher arrow:
-//
-//     MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
-
 ```
 
 ## Day 3 Addendum A — Production-readiness checks for the knowledge and vector layer
@@ -13251,18 +13160,456 @@ In newer Neo4j versions, the Cypher `SEARCH` clause is the preferred production-
 # Addendum B — Step B1: Explainable GraphRAG context for a login-style query
 
 ```cypher
+// =============================================================================
+// LOGIN-STYLE EXPLAINABLE VECTOR RETRIEVAL WITH OPERATIONAL GRAPH CONTEXT
+// =============================================================================
+// This query performs an explainable, graph-enhanced vector retrieval workflow.
+//
+// In simple terms, it answers this question:
+//
+//     "For a login-style search intent, which document chunks are most relevant,
+//      which article and issue do they connect to,
+//      and what ticket/customer/product/agent/analytics context exists around
+//      that issue?"
+//
+// This is more advanced than a normal vector-search query.
+//
+// A basic vector search usually returns only:
+//
+//     chunk + similarity score
+//
+// But this query returns a much richer explanation:
+//
+//     retrieved chunk
+//       -> parent knowledge article
+//       -> issue solved by that article
+//       -> related tickets
+//       -> customers who raised those tickets
+//       -> products those tickets are about
+//       -> agents assigned to those tickets
+//       -> graph analytics scores and community IDs for those tickets
+//
+// This is a strong graph-RAG pattern because it combines:
+//
+// 1. Semantic retrieval:
+//    The vector index finds chunks that are close to the query vector.
+//
+// 2. Source traceability:
+//    The PART_OF relationship traces each chunk back to its article.
+//
+// 3. Business meaning:
+//    The SOLVES relationship traces each article to the issue it solves.
+//
+// 4. Operational context:
+//    Optional ticket/customer/product/agent relationships explain how the issue
+//    appears in real support operations.
+//
+// 5. Graph analytics context:
+//    Ticket analytics scores add prioritization and network insight.
+//
+// The core retrieval path is:
+//
+//     (:DocumentChunk)-[:PART_OF]->(:KnowledgeArticle)-[:SOLVES]->(:Issue)
+//
+// Then optional operational context is expanded using:
+//
+//     (:Ticket)-[:HAS_ISSUE]->(:Issue)
+//     (:Customer)-[:RAISED]->(:Ticket)
+//     (:Ticket)-[:ABOUT]->(:Product)
+//     (:Ticket)-[:ASSIGNED_TO]->(:Agent)
+//
+// This query is especially useful for demonstrating that graph-enhanced RAG can
+// produce answers that are not only relevant, but also explainable, traceable,
+// auditable, and connected to business context.
+
 CALL db.index.vector.queryNodes(
   'documentChunk_embedding_vector',
   2,
   [0.92, 0.12, 0.05]
 )
+
+// =============================================================================
+// STEP 1: RUN VECTOR SIMILARITY SEARCH AGAINST DOCUMENT CHUNK EMBEDDINGS
+// =============================================================================
+// CALL is used to execute a Neo4j procedure.
+//
+// Here we are calling:
+//
+//     db.index.vector.queryNodes()
+//
+// This procedure searches a vector index and returns nodes whose stored
+// embedding vectors are most similar to the query vector we provide.
+//
+// In this project, the vector index:
+//
+//     documentChunk_embedding_vector
+//
+// was created on:
+//
+//     (:DocumentChunk).embedding
+//
+// That means the procedure searches DocumentChunk nodes by comparing their
+// embedding vectors against the query vector.
+//
+// -----------------------------------------------------------------------------
+// Parameter 1: 'documentChunk_embedding_vector'
+// -----------------------------------------------------------------------------
+// The first argument is the name of the vector index.
+//
+// This tells Neo4j:
+//
+//     "Use the vector index named documentChunk_embedding_vector."
+//
+// The index name must match exactly.
+//
+// If the name is misspelled, Neo4j will not search the intended index.
+//
+// This is why earlier validation queries checked that this index exists, is
+// online, is fully populated, and is built on:
+//
+//     DocumentChunk.embedding
+//
+// -----------------------------------------------------------------------------
+// Parameter 2: 2
+// -----------------------------------------------------------------------------
+// The second argument is the number of nearest results to return.
+//
+// Here we pass:
+//
+//     2
+//
+// This means:
+//
+//     "Return the top 2 most similar DocumentChunk nodes."
+//
+// This is commonly called top-k retrieval.
+//
+// In this specific lab, top 2 is intentional because the login article has two
+// login-related chunks:
+//
+//     C-K001-001
+//     C-K001-002
+//
+// So top 2 should retrieve the two most relevant login chunks without pulling in
+// less relevant payment or app-crash chunks.
+//
+// In production, choosing top-k is a design decision:
+//
+//     Smaller top-k:
+//       - more focused context
+//       - less noise
+//       - fewer tokens sent to an LLM
+//
+//     Larger top-k:
+//       - broader coverage
+//       - better chance of including supporting context
+//       - but more risk of irrelevant or duplicate information
+//
+// -----------------------------------------------------------------------------
+// Parameter 3: [0.92, 0.12, 0.05]
+// -----------------------------------------------------------------------------
+// The third argument is the query embedding vector.
+//
+// In a real-world RAG application, this vector would usually be generated from
+// a user's natural-language question.
+//
+// For example, a user may ask:
+//
+//     "Customer cannot login and OTP is not coming."
+//
+// The application would convert that question into an embedding vector using
+// the same embedding model used for the stored chunk embeddings.
+//
+// In this lab, we manually provide a simple 3-dimensional demo vector:
+//
+//     [0.92, 0.12, 0.05]
+//
+// This vector is login-oriented because the first dimension is high.
+//
+// Earlier, login chunks were assigned vectors close to this:
+//
+//     C-K001-001 -> [0.95, 0.10, 0.05]
+//     C-K001-002 -> [0.90, 0.15, 0.05]
+//
+// So the expected behavior is:
+//
+//     The top 2 returned chunks should be login-related chunks.
+//
+// -----------------------------------------------------------------------------
+// Why the query vector must have 3 values
+// -----------------------------------------------------------------------------
+// The vector index was configured with:
+//
+//     vector.dimensions = 3
+//
+// That means every query vector passed to this index must also have exactly
+// three numeric values.
+//
+// This query vector is valid because it has three values:
+//
+//     0.92
+//     0.12
+//     0.05
+//
+// If we passed a vector with 2 values or 4 values, it would not match the index
+// dimension and the vector search would not be valid.
+
 YIELD node AS dc, score
 
+// =============================================================================
+// STEP 2: CAPTURE VECTOR SEARCH OUTPUT
+// =============================================================================
+// YIELD receives the output from the vector search procedure.
+//
+// The procedure returns two important values:
+//
+//     node
+//     score
+//
+// -----------------------------------------------------------------------------
+// node AS dc
+// -----------------------------------------------------------------------------
+// node is the graph node returned by the vector index.
+//
+// Since the index was created on DocumentChunk.embedding, each returned node
+// should be a DocumentChunk node.
+//
+// We rename node to dc:
+//
+//     node AS dc
+//
+// This makes the rest of the query easier to read because dc clearly means:
+//
+//     DocumentChunk
+//
+// After this alias, we can access properties such as:
+//
+//     dc.chunkId
+//     dc.text
+//     dc.embedding
+//
+// -----------------------------------------------------------------------------
+// score
+// -----------------------------------------------------------------------------
+// score is the similarity score between the query vector and the stored embedding
+// on the returned DocumentChunk.
+//
+// Because the vector index uses cosine similarity, a higher score means the
+// stored chunk embedding is more similar to the query vector.
+//
+// In simple terms:
+//
+//     Higher score = stronger semantic match
+//
+// Later, we rename this score as:
+//
+//     vectorScore
+//
+// so it is clear that this score comes from vector similarity, not from graph
+// analytics algorithms like PageRank or betweenness.
+
 MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+
+// =============================================================================
+// STEP 3: EXPAND RETRIEVED CHUNK TO ARTICLE AND ISSUE
+// =============================================================================
+// After vector search retrieves the most similar chunks, this MATCH clause
+// follows the graph relationships from each retrieved DocumentChunk.
+//
+// The pattern is:
+//
+//     (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+//
+// In plain English:
+//
+//     "For each retrieved chunk,
+//      find the KnowledgeArticle it is part of,
+//      then find the Issue solved by that KnowledgeArticle."
+//
+// This is the first explainability layer.
+//
+// Vector search tells us:
+//
+//     "This chunk is semantically similar to the login-style query vector."
+//
+// Graph traversal tells us:
+//
+//     "This chunk comes from this article,
+//      and this article solves this issue."
+//
+// -----------------------------------------------------------------------------
+// (dc)-[:PART_OF]->(ka:KnowledgeArticle)
+// -----------------------------------------------------------------------------
+// The PART_OF relationship connects a DocumentChunk to its parent
+// KnowledgeArticle.
+//
+// Example:
+//
+//     (:DocumentChunk {chunkId: "C-K001-001"})
+//         -[:PART_OF]->
+//     (:KnowledgeArticle {articleId: "K001"})
+//
+// This gives source lineage.
+//
+// Without this relationship, we may retrieve useful text, but we would not easily
+// know which article the text came from.
+//
+// -----------------------------------------------------------------------------
+// (ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+// -----------------------------------------------------------------------------
+// The SOLVES relationship connects a KnowledgeArticle to the Issue it solves.
+//
+// Example:
+//
+//     (:KnowledgeArticle {articleId: "K001"})
+//         -[:SOLVES]->
+//     (:Issue {name: "Login Failure"})
+//
+// This adds business meaning to the retrieved chunk.
+//
+// For a login-style query vector, we expect the retrieved chunks to connect to:
+//
+//     K001 - Fix login failure
+//
+// and then to:
+//
+//     Login Failure
+//
+// -----------------------------------------------------------------------------
+// Why this is a mandatory MATCH
+// -----------------------------------------------------------------------------
+// This query uses MATCH, not OPTIONAL MATCH, for the chunk -> article -> issue
+// path because this path is required for explainable retrieval.
+//
+// If a retrieved chunk cannot be traced to an article and issue, then it is not
+// complete enough for this specific result.
+//
+// So this MATCH keeps only retrieval results that have the required graph
+// lineage and business context.
+
 OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+
+// =============================================================================
+// STEP 4: OPTIONALLY FIND TICKETS RELATED TO THE ISSUE
+// =============================================================================
+// OPTIONAL MATCH tries to find additional graph context without removing the
+// main retrieval result if that context is missing.
+//
+// This pattern is:
+//
+//     (t:Ticket)-[:HAS_ISSUE]->(i)
+//
+// In plain English:
+//
+//     "Find tickets that are linked to the retrieved Issue."
+//
+// Example:
+//
+//     (:Ticket {ticketId: "T001"})
+//         -[:HAS_ISSUE]->
+//     (:Issue {name: "Login Failure"})
+//
+// -----------------------------------------------------------------------------
+// Why OPTIONAL MATCH is used here
+// -----------------------------------------------------------------------------
+// Ticket context is helpful, but it should not be required.
+//
+// The retrieved chunk is still valid even if no ticket is connected to the issue.
+//
+// If we used MATCH instead of OPTIONAL MATCH, then any issue without tickets
+// would cause the retrieval result to disappear.
+//
+// OPTIONAL MATCH preserves the retrieved chunk/article/issue row and adds ticket
+// details only when they exist.
+//
+// This makes the query more robust and production-friendly.
+
 OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+
+// =============================================================================
+// STEP 5: OPTIONALLY FIND CUSTOMERS WHO RAISED RELATED TICKETS
+// =============================================================================
+// This OPTIONAL MATCH expands from related tickets to customers.
+//
+// The pattern is:
+//
+//     (c:Customer)-[:RAISED]->(t)
+//
+// In plain English:
+//
+//     "Find customers who raised the related tickets."
+//
+// Example:
+//
+//     (:Customer {name: "Amit"})
+//         -[:RAISED]->
+//     (:Ticket {ticketId: "T001"})
+//
+// This helps answer:
+//
+//     "Which customers are affected by this issue?"
+//
+// Because this is optional, the result still appears even when customer context
+// is missing.
+
 OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+
+// =============================================================================
+// STEP 6: OPTIONALLY FIND PRODUCTS ASSOCIATED WITH RELATED TICKETS
+// =============================================================================
+// This OPTIONAL MATCH finds products connected to the related tickets.
+//
+// The pattern is:
+//
+//     (t)-[:ABOUT]->(p:Product)
+//
+// In plain English:
+//
+//     "Find the product that the ticket is about."
+//
+// Example:
+//
+//     (:Ticket {ticketId: "T001"})
+//         -[:ABOUT]->
+//     (:Product {name: "Mobile App"})
+//
+// This is useful because the same issue type may affect different products.
+//
+// Product context helps support teams understand:
+//
+// - which product is impacted
+// - whether the issue is product-specific
+// - whether the retrieved article is relevant for that product
+// - how to prioritize fixes or escalations
+
 OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+
+// =============================================================================
+// STEP 7: OPTIONALLY FIND AGENTS ASSIGNED TO RELATED TICKETS
+// =============================================================================
+// This OPTIONAL MATCH finds support agents assigned to related tickets.
+//
+// The pattern is:
+//
+//     (t)-[:ASSIGNED_TO]->(a:Agent)
+//
+// In plain English:
+//
+//     "Find the agent assigned to the ticket."
+//
+// Example:
+//
+//     (:Ticket {ticketId: "T001"})
+//         -[:ASSIGNED_TO]->
+//     (:Agent {name: "Priya"})
+//
+// Agent context is useful for:
+//
+// - ownership visibility
+// - escalation workflows
+// - identifying who handled similar issues
+// - routing new issues to experienced agents
+// - understanding support workload
 
 RETURN
   "Login-style explainable retrieval" AS testName,
@@ -13293,25 +13640,698 @@ RETURN
     labelPropagationCommunityId: t.labelPropagationCommunityId
   }) AS ticketAnalyticsContext
 
+// =============================================================================
+// STEP 8: RETURN EXPLAINABLE RETRIEVAL OUTPUT
+// =============================================================================
+// RETURN defines the final result table.
+//
+// This output combines semantic search, graph traversal, operational context,
+// and analytics metadata.
+//
+// Because this RETURN uses collect(), Neo4j groups results by all non-aggregated
+// returned values:
+//
+// - testName
+// - chunkId
+// - retrievedChunk
+// - vectorScore
+// - articleId
+// - articleTitle
+// - issueId
+// - issueName
+// - issueSeverity
+//
+// So the final output is usually one row per retrieved chunk, enriched with
+// collected ticket/customer/product/agent context.
+//
+// -----------------------------------------------------------------------------
+// "Login-style explainable retrieval" AS testName
+// -----------------------------------------------------------------------------
+// This hardcoded value labels the test scenario.
+//
+// It helps anyone reading the output understand that this result came from the
+// login-style retrieval test.
+//
+// This is especially useful when comparing multiple test vectors later.
+//
+// -----------------------------------------------------------------------------
+// dc.chunkId AS chunkId
+// -----------------------------------------------------------------------------
+// chunkId identifies the retrieved DocumentChunk.
+//
+// Example:
+//
+//     C-K001-001
+//
+// This helps trace exactly which chunk was returned by vector search.
+//
+// -----------------------------------------------------------------------------
+// dc.text AS retrievedChunk
+// -----------------------------------------------------------------------------
+// retrievedChunk is the actual text stored in the retrieved DocumentChunk.
+//
+// This is the content that may be passed to an LLM as grounding context.
+//
+// For a login-style query, we expect this text to mention ideas like:
+//
+// - sign in
+// - login failure
+// - password reset
+// - OTP delivery
+// - app cache
+// - retry login
+//
+// -----------------------------------------------------------------------------
+// score AS vectorScore
+// -----------------------------------------------------------------------------
+// vectorScore is the vector similarity score.
+//
+// We rename score to vectorScore because the query also returns graph analytics
+// scores later.
+//
+// This avoids confusion between:
+//
+// - vectorScore
+// - fullDegreeScore
+// - pageRankScore
+// - betweennessScore
+//
+// Each score means something different.
+//
+// vectorScore answers:
+//
+//     "How semantically similar is this chunk to the query vector?"
+//
+// -----------------------------------------------------------------------------
+// ka.articleId AS articleId
+// -----------------------------------------------------------------------------
+// articleId identifies the parent KnowledgeArticle.
+//
+// Example:
+//
+//     K001
+//
+// This provides source traceability.
+//
+// -----------------------------------------------------------------------------
+// ka.title AS articleTitle
+// -----------------------------------------------------------------------------
+// articleTitle gives the readable title of the parent article.
+//
+// Example:
+//
+//     Fix login failure
+//
+// This helps humans understand the larger article behind the retrieved chunk.
+//
+// -----------------------------------------------------------------------------
+// i.issueId AS issueId
+// -----------------------------------------------------------------------------
+// issueId identifies the Issue node solved by the article.
+//
+// Example:
+//
+//     I001
+//
+// This gives stable issue-level traceability.
+//
+// -----------------------------------------------------------------------------
+// i.name AS issueName
+// -----------------------------------------------------------------------------
+// issueName gives the readable name of the issue.
+//
+// For a login-style query, the expected issue name is usually:
+//
+//     Login Failure
+//
+// This confirms that the vector retrieval result is connected to the expected
+// business issue.
+//
+// -----------------------------------------------------------------------------
+// i.severity AS issueSeverity
+// -----------------------------------------------------------------------------
+// issueSeverity shows the business severity of the issue.
+//
+// Example values might be:
+//
+//     High
+//     Medium
+//     Low
+//     Critical
+//
+// Severity is useful because a retrieved answer for a high-severity issue may
+// require more urgent handling, escalation, or careful wording.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT t.ticketId) AS relatedTicketIds
+// -----------------------------------------------------------------------------
+// This collects all unique ticket IDs related to the issue.
+//
+// Example:
+//
+//     ["T001", "T004", "T009"]
+//
+// DISTINCT is important because optional matches can multiply rows.
+//
+// For example, if a ticket is connected to a customer, product, and agent, the
+// same ticket may appear multiple times in intermediate rows.
+//
+// collect(DISTINCT ...) keeps the final list clean.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT c.name) AS relatedCustomers
+// -----------------------------------------------------------------------------
+// This collects unique customer names who raised related tickets.
+//
+// Example:
+//
+//     ["Amit", "Neha"]
+//
+// This helps explain customer impact.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT p.name) AS relatedProducts
+// -----------------------------------------------------------------------------
+// This collects unique products associated with related tickets.
+//
+// Example:
+//
+//     ["Mobile App"]
+//
+// This helps explain product impact.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT a.name) AS assignedAgents
+// -----------------------------------------------------------------------------
+// This collects unique agents assigned to related tickets.
+//
+// Example:
+//
+//     ["Priya", "Rahul"]
+//
+// This helps explain ownership and operational routing.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT { ... }) AS ticketAnalyticsContext
+// -----------------------------------------------------------------------------
+// This collects a list of maps containing ticket-level metadata and graph
+// analytics scores.
+//
+// Each collected map includes:
+//
+// - ticketId
+// - priority
+// - status
+// - fullDegreeScore
+// - pageRankScore
+// - betweennessScore
+// - louvainCommunityId
+// - labelPropagationCommunityId
+//
+// This gives an analytics-enriched view of the tickets around the retrieved
+// issue.
+//
+// -----------------------------------------------------------------------------
+// ticketId
+// -----------------------------------------------------------------------------
+// ticketId identifies the ticket.
+//
+// -----------------------------------------------------------------------------
+// priority
+// -----------------------------------------------------------------------------
+// priority shows the operational urgency of the ticket.
+//
+// Example:
+//
+//     High
+//     Medium
+//     Low
+//
+// -----------------------------------------------------------------------------
+// status
+// -----------------------------------------------------------------------------
+// status shows the current lifecycle state of the ticket.
+//
+// Example:
+//
+//     Open
+//     In Progress
+//     Resolved
+//     Closed
+//
+// -----------------------------------------------------------------------------
+// fullDegreeScore
+// -----------------------------------------------------------------------------
+// fullDegreeScore usually represents how connected the ticket is in the graph.
+//
+// A higher degree can indicate that the ticket has many relationships and may be
+// operationally important.
+//
+// -----------------------------------------------------------------------------
+// pageRankScore
+// -----------------------------------------------------------------------------
+// pageRankScore is a graph-analytics measure that can indicate relative
+// importance or influence inside the graph.
+//
+// A ticket with a higher PageRank score may be more central in the support
+// network.
+//
+// -----------------------------------------------------------------------------
+// betweennessScore
+// -----------------------------------------------------------------------------
+// betweennessScore can indicate whether a ticket acts as a bridge between
+// different parts of the graph.
+//
+// A high value may suggest the ticket connects otherwise separate clusters or
+// workflows.
+//
+// -----------------------------------------------------------------------------
+// louvainCommunityId
+// -----------------------------------------------------------------------------
+// louvainCommunityId identifies the community assigned by the Louvain community
+// detection algorithm.
+//
+// This helps group related tickets into structural communities.
+//
+// -----------------------------------------------------------------------------
+// labelPropagationCommunityId
+// -----------------------------------------------------------------------------
+// labelPropagationCommunityId identifies the community assigned by label
+// propagation.
+//
+// This gives another view of graph community membership.
+//
+// -----------------------------------------------------------------------------
+// Important note about null values from OPTIONAL MATCH
+// -----------------------------------------------------------------------------
+// Because ticket/customer/product/agent context is optional, some collected lists
+// may contain null values or the ticketAnalyticsContext may include a map where
+// fields are null if no ticket exists.
+//
+// That is normal behavior when using OPTIONAL MATCH.
+//
+// For a stricter production report, we could filter out null tickets before
+// collecting the analytics map.
+//
+// For teaching and validation, this version clearly shows how optional context
+// behaves.
+
 ORDER BY vectorScore DESC;
+
+// =============================================================================
+// STEP 9: SORT BY BEST VECTOR MATCH FIRST
+// =============================================================================
+// ORDER BY vectorScore DESC sorts the final result by vector similarity score
+// from highest to lowest.
+//
+// DESC means descending order.
+//
+// This ensures the strongest semantic match appears first.
+//
+// Since the query vector is:
+//
+//     [0.92, 0.12, 0.05]
+//
+// and the login chunks are close to it:
+//
+//     C-K001-001 -> [0.95, 0.10, 0.05]
+//     C-K001-002 -> [0.90, 0.15, 0.05]
+//
+// we expect the two retrieved rows to be login-related chunks, sorted by their
+// similarity scores.
+//
+// -----------------------------------------------------------------------------
+// Why sorting matters
+// -----------------------------------------------------------------------------
+// In retrieval systems, ranking matters.
+//
+// The highest-scoring chunk is usually the best candidate for grounding an LLM
+// response.
+//
+// Sorting by vectorScore makes the output:
+//
+// - easier to inspect
+// - easier to explain
+// - easier to validate
+// - better suited for lab screenshots and documentation
+//
+// =============================================================================
+// FINAL TAKEAWAY
+// =============================================================================
+// This query demonstrates explainable graph-enhanced retrieval.
+//
+// The complete flow is:
+//
+//     1. Use a login-style vector to search DocumentChunk embeddings.
+//     2. Retrieve the top 2 most similar chunks.
+//     3. Capture each chunk and its vector similarity score.
+//     4. Traverse from chunk to KnowledgeArticle using PART_OF.
+//     5. Traverse from KnowledgeArticle to Issue using SOLVES.
+//     6. Optionally collect related tickets using HAS_ISSUE.
+//     7. Optionally collect customers using RAISED.
+//     8. Optionally collect products using ABOUT.
+//     9. Optionally collect assigned agents using ASSIGNED_TO.
+//     10. Return ticket analytics context for deeper operational insight.
+//     11. Sort by vectorScore so the strongest match appears first.
+//
+// The main learning point is:
+//
+//     Vector search retrieves relevant knowledge.
+//     Graph traversal explains that knowledge.
+//     Optional graph expansion adds operational context.
+//     Graph analytics adds prioritization and structural insight.
+//
+// This is exactly the value of graph-enhanced RAG.
+//
+// Instead of returning only:
+//
+//     "Here is a similar chunk."
+//
+// the graph can return:
+//
+//     "Here is a similar chunk,
+//      from this article,
+//      solving this issue,
+//      connected to these tickets,
+//      raised by these customers,
+//      about these products,
+//      assigned to these agents,
+//      with these graph analytics signals."
 ```
 
 # Addendum B — Step B2: Explainable GraphRAG context for Payment Failure and App Crash
 
 ```cypher
+// =============================================================================
+// MULTI-SCENARIO EXPLAINABLE GRAPH-ENHANCED VECTOR RETRIEVAL QUERY
+// =============================================================================
+// This query runs two explainable vector-retrieval test cases in one combined
+// Cypher query:
+//
+//     1. Payment-style explainable retrieval
+//     2. App-crash-style explainable retrieval
+//
+// In simple terms, it answers this question:
+//
+//     "If I search the DocumentChunk vector index using payment-style and
+//      app-crash-style query vectors, do I retrieve the correct chunks,
+//      and can I explain those chunks using article, issue, ticket, customer,
+//      product, agent, and graph analytics context?"
+//
+// This is an advanced graph-RAG validation query.
+//
+// A basic vector search returns:
+//
+//     retrieved chunk + vector similarity score
+//
+// But this query enriches each retrieved chunk with graph context:
+//
+//     DocumentChunk
+//       -> KnowledgeArticle
+//       -> Issue
+//       -> Ticket
+//       -> Customer
+//       -> Product
+//       -> Agent
+//       -> Ticket analytics metadata
+//
+// The core mandatory retrieval path is:
+//
+//     (:DocumentChunk)-[:PART_OF]->(:KnowledgeArticle)-[:SOLVES]->(:Issue)
+//
+// Then optional operational context is added using:
+//
+//     (:Ticket)-[:HAS_ISSUE]->(:Issue)
+//     (:Customer)-[:RAISED]->(:Ticket)
+//     (:Ticket)-[:ABOUT]->(:Product)
+//     (:Ticket)-[:ASSIGNED_TO]->(:Agent)
+//
+// This query is useful because it proves that the system can do more than
+// semantic matching. It can also explain the retrieved result through the graph.
+//
+// In a production-style RAG workflow, this kind of query helps answer:
+//
+//     "Why was this chunk retrieved?"
+//     "Which article does it come from?"
+//     "Which issue does that article solve?"
+//     "Which tickets/customers/products/agents are related to that issue?"
+//     "What graph analytics signals exist around those tickets?"
+
 CALL {
+
+  // ===========================================================================
+  // SUBQUERY BLOCK FOR MULTIPLE RETRIEVAL TEST CASES
+  // ===========================================================================
+  // CALL { ... } creates a subquery.
+  //
+  // A subquery lets us run one or more internal queries and return their combined
+  // result to the outer query.
+  //
+  // Here, the subquery contains two vector-search test cases:
+  //
+  //     1. Payment-style vector search
+  //     2. App-crash-style vector search
+  //
+  // These two test cases are combined using UNION ALL.
+  //
+  // Why use a subquery?
+  //
+  // Because we want both test cases to return the same columns, then display all
+  // results together in one final report.
+  //
+  // Think of this as running two experiments and then putting their outputs into
+  // one combined validation table.
+
   CALL db.index.vector.queryNodes(
     'documentChunk_embedding_vector',
     2,
     [0.08, 0.92, 0.12]
   )
+
+  // ===========================================================================
+  // TEST CASE 1: PAYMENT-STYLE VECTOR SEARCH
+  // ===========================================================================
+  // This procedure call searches the vector index using a payment-oriented query
+  // vector.
+  //
+  // The procedure:
+  //
+  //     db.index.vector.queryNodes()
+  //
+  // searches a vector index and returns nodes whose stored embedding vectors are
+  // most similar to the query vector.
+  //
+  // ---------------------------------------------------------------------------
+  // Parameter 1: 'documentChunk_embedding_vector'
+  // ---------------------------------------------------------------------------
+  // This is the name of the vector index.
+  //
+  // Earlier, this index was created on:
+  //
+  //     (:DocumentChunk).embedding
+  //
+  // So this procedure searches DocumentChunk nodes by comparing their embedding
+  // values with the query vector.
+  //
+  // The index name must match exactly.
+  //
+  // ---------------------------------------------------------------------------
+  // Parameter 2: 2
+  // ---------------------------------------------------------------------------
+  // This tells Neo4j to return the top 2 most similar chunks.
+  //
+  // This is called top-k retrieval.
+  //
+  // Here, k = 2.
+  //
+  // For this lab, payment-related content has two payment chunks:
+  //
+  //     C-K002-001
+  //     C-K002-002
+  //
+  // So top 2 is a focused test. It should return the two strongest payment
+  // chunks without including weaker unrelated results.
+  //
+  // ---------------------------------------------------------------------------
+  // Parameter 3: [0.08, 0.92, 0.12]
+  // ---------------------------------------------------------------------------
+  // This is the payment-style query vector.
+  //
+  // It has a high second dimension:
+  //
+  //     0.92
+  //
+  // That makes it close to payment-related demo embeddings such as:
+  //
+  //     [0.05, 0.95, 0.10]
+  //     [0.10, 0.90, 0.15]
+  //
+  // So we expect this search to retrieve payment-related chunks first.
+  //
+  // In a real application, this vector would normally be generated from a user
+  // question such as:
+  //
+  //     "Payment failed during checkout."
+  //
+  // But in this lab, we manually provide a simple 3-dimensional vector so the
+  // retrieval behavior is easy to understand.
+
   YIELD node AS dc, score
 
+  // ===========================================================================
+  // CAPTURE PAYMENT VECTOR SEARCH RESULTS
+  // ===========================================================================
+  // YIELD receives the output from the vector-search procedure.
+  //
+  // The procedure returns:
+  //
+  //     node
+  //     score
+  //
+  // ---------------------------------------------------------------------------
+  // node AS dc
+  // ---------------------------------------------------------------------------
+  // node is the matched graph node returned by the vector index.
+  //
+  // Since this vector index was created on DocumentChunk.embedding, each returned
+  // node should be a DocumentChunk.
+  //
+  // We rename node to dc because dc clearly represents:
+  //
+  //     DocumentChunk
+  //
+  // This makes the rest of the query easier to read.
+  //
+  // ---------------------------------------------------------------------------
+  // score
+  // ---------------------------------------------------------------------------
+  // score is the vector similarity score.
+  //
+  // A higher score means the returned chunk is more similar to the payment-style
+  // query vector.
+  //
+  // Later, we rename this score to vectorScore so it is not confused with graph
+  // analytics scores such as PageRank or betweenness.
+
   MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+
+  // ===========================================================================
+  // EXPAND PAYMENT RESULT TO ARTICLE AND ISSUE CONTEXT
+  // ===========================================================================
+  // After vector search retrieves the chunk, this MATCH follows the mandatory
+  // graph explanation path:
+  //
+  //     (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+  //
+  // In plain English:
+  //
+  //     "For each retrieved chunk, find the article it belongs to,
+  //      and then find the issue that article solves."
+  //
+  // ---------------------------------------------------------------------------
+  // (dc)-[:PART_OF]->(ka:KnowledgeArticle)
+  // ---------------------------------------------------------------------------
+  // This traces the retrieved chunk back to its parent knowledge article.
+  //
+  // Example:
+  //
+  //     (:DocumentChunk {chunkId: "C-K002-001"})
+  //       -[:PART_OF]->
+  //     (:KnowledgeArticle {articleId: "K002"})
+  //
+  // This provides source traceability.
+  //
+  // ---------------------------------------------------------------------------
+  // (ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+  // ---------------------------------------------------------------------------
+  // This traces the parent article to the issue it solves.
+  //
+  // Example:
+  //
+  //     (:KnowledgeArticle {articleId: "K002"})
+  //       -[:SOLVES]->
+  //     (:Issue {name: "Payment Failure"})
+  //
+  // This provides business meaning.
+  //
+  // The vector index says:
+  //
+  //     "This chunk is similar to the query vector."
+  //
+  // The graph says:
+  //
+  //     "This chunk belongs to a payment article that solves Payment Failure."
+
   OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+
+  // ===========================================================================
+  // OPTIONALLY FIND TICKETS RELATED TO THE ISSUE
+  // ===========================================================================
+  // OPTIONAL MATCH tries to find extra context, but does not remove the main
+  // retrieval result if the context does not exist.
+  //
+  // This pattern:
+  //
+  //     (t:Ticket)-[:HAS_ISSUE]->(i)
+  //
+  // means:
+  //
+  //     "Find tickets that have this issue."
+  //
+  // Ticket context is optional because the retrieved chunk/article/issue result
+  // is still valid even if no support tickets are linked to the issue.
+  //
+  // If we used MATCH instead of OPTIONAL MATCH here, any issue without tickets
+  // would disappear from the final output.
+
   OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+
+  // ===========================================================================
+  // OPTIONALLY FIND CUSTOMERS WHO RAISED RELATED TICKETS
+  // ===========================================================================
+  // This pattern:
+  //
+  //     (c:Customer)-[:RAISED]->(t)
+  //
+  // means:
+  //
+  //     "Find customers who raised the related tickets."
+  //
+  // This helps explain customer impact.
+  //
+  // Because this is optional, the query still returns the retrieved chunk even if
+  // no customer is connected to the ticket.
+
   OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+
+  // ===========================================================================
+  // OPTIONALLY FIND PRODUCTS ASSOCIATED WITH RELATED TICKETS
+  // ===========================================================================
+  // This pattern:
+  //
+  //     (t)-[:ABOUT]->(p:Product)
+  //
+  // means:
+  //
+  //     "Find the product that the ticket is about."
+  //
+  // Product context helps us understand which product area is affected by the
+  // retrieved issue.
+
   OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+
+  // ===========================================================================
+  // OPTIONALLY FIND AGENTS ASSIGNED TO RELATED TICKETS
+  // ===========================================================================
+  // This pattern:
+  //
+  //     (t)-[:ASSIGNED_TO]->(a:Agent)
+  //
+  // means:
+  //
+  //     "Find the support agent assigned to the related ticket."
+  //
+  // Agent context helps with ownership, escalation, and operational visibility.
 
   RETURN
     "Payment-style explainable retrieval" AS testName,
@@ -13338,20 +14358,250 @@ CALL {
       labelPropagationCommunityId: t.labelPropagationCommunityId
     }) AS ticketAnalyticsContext
 
+  // ===========================================================================
+  // RETURN PAYMENT EXPLAINABLE RETRIEVAL RESULT
+  // ===========================================================================
+  // This RETURN creates the payment-style result rows.
+  //
+  // Each returned row contains:
+  //
+  // - the test name
+  // - retrieved chunk details
+  // - vector similarity score
+  // - parent article details
+  // - issue details
+  // - related ticket/customer/product/agent context
+  // - ticket analytics metadata
+  //
+  // Because collect() is used, Neo4j groups rows by the non-aggregated fields.
+  // In practice, this usually produces one row per retrieved chunk, with related
+  // operational context collected into lists.
+  //
+  // ---------------------------------------------------------------------------
+  // testName
+  // ---------------------------------------------------------------------------
+  // The hardcoded value:
+  //
+  //     "Payment-style explainable retrieval"
+  //
+  // labels the test case.
+  //
+  // This is important because the final output combines multiple test scenarios.
+  //
+  // ---------------------------------------------------------------------------
+  // chunkId and retrievedChunk
+  // ---------------------------------------------------------------------------
+  // These show which DocumentChunk was retrieved and what text it contains.
+  //
+  // For payment-style retrieval, we expect chunks related to:
+  //
+  // - payment failure
+  // - checkout
+  // - card status
+  // - available balance
+  // - payment gateway response
+  // - retry transaction
+  //
+  // ---------------------------------------------------------------------------
+  // vectorScore
+  // ---------------------------------------------------------------------------
+  // This is the similarity score from vector search.
+  //
+  // Higher means more similar to the payment-style query vector.
+  //
+  // ---------------------------------------------------------------------------
+  // articleId and articleTitle
+  // ---------------------------------------------------------------------------
+  // These trace the chunk back to the parent KnowledgeArticle.
+  //
+  // For payment-style results, we expect something like:
+  //
+  //     K002 - Resolve payment failure
+  //
+  // ---------------------------------------------------------------------------
+  // issueId, issueName, and issueSeverity
+  // ---------------------------------------------------------------------------
+  // These explain which issue the article solves and how severe that issue is.
+  //
+  // For payment-style results, we expect:
+  //
+  //     Payment Failure
+  //
+  // ---------------------------------------------------------------------------
+  // relatedTicketIds
+  // ---------------------------------------------------------------------------
+  // This collects unique ticket IDs connected to the issue.
+  //
+  // DISTINCT is used because optional matches can multiply rows.
+  //
+  // ---------------------------------------------------------------------------
+  // relatedCustomers
+  // ---------------------------------------------------------------------------
+  // This collects unique customers who raised those related tickets.
+  //
+  // ---------------------------------------------------------------------------
+  // relatedProducts
+  // ---------------------------------------------------------------------------
+  // This collects unique products associated with the related tickets.
+  //
+  // ---------------------------------------------------------------------------
+  // assignedAgents
+  // ---------------------------------------------------------------------------
+  // This collects unique agents assigned to the related tickets.
+  //
+  // ---------------------------------------------------------------------------
+  // ticketAnalyticsContext
+  // ---------------------------------------------------------------------------
+  // This collects ticket-level operational and graph analytics metadata.
+  //
+  // Each map contains:
+  //
+  // - ticketId
+  // - priority
+  // - status
+  // - fullDegreeScore
+  // - pageRankScore
+  // - betweennessScore
+  // - louvainCommunityId
+  // - labelPropagationCommunityId
+  //
+  // This adds deeper explainability because the retrieved issue can now be
+  // understood through related support tickets and their graph analytics signals.
+
   UNION ALL
+
+  // ===========================================================================
+  // COMBINE PAYMENT RESULTS WITH APP-CRASH RESULTS
+  // ===========================================================================
+  // UNION ALL combines rows from the payment-style test with rows from the
+  // app-crash-style test.
+  //
+  // We use UNION ALL instead of UNION because UNION ALL preserves all rows.
+  //
+  // That is better for validation because we do not want Neo4j to remove rows
+  // just because two rows happen to look similar.
+  //
+  // Important rule:
+  //
+  // Both sides of UNION ALL must return the same columns in the same order.
+  //
+  // That is why both branches return:
+  //
+  //     testName
+  //     chunkId
+  //     retrievedChunk
+  //     vectorScore
+  //     articleId
+  //     articleTitle
+  //     issueId
+  //     issueName
+  //     issueSeverity
+  //     relatedTicketIds
+  //     relatedCustomers
+  //     relatedProducts
+  //     assignedAgents
+  //     ticketAnalyticsContext
 
   CALL db.index.vector.queryNodes(
     'documentChunk_embedding_vector',
     2,
     [0.12, 0.10, 0.92]
   )
+
+  // ===========================================================================
+  // TEST CASE 2: APP-CRASH-STYLE VECTOR SEARCH
+  // ===========================================================================
+  // This second vector search uses the same vector index but a different query
+  // vector.
+  //
+  // The app-crash-style vector is:
+  //
+  //     [0.12, 0.10, 0.92]
+  //
+  // This vector has a high third dimension:
+  //
+  //     0.92
+  //
+  // That makes it close to app-crash-related demo embeddings such as:
+  //
+  //     [0.10, 0.10, 0.95]
+  //     [0.15, 0.10, 0.90]
+  //
+  // So we expect this search to retrieve app-crash-related chunks first.
+  //
+  // In a real application, this vector might come from a question like:
+  //
+  //     "The mobile app keeps crashing."
+  //
+  // Again, top-k is set to 2 because we expect two strongest app-crash chunks.
+
   YIELD node AS dc, score
 
+  // ===========================================================================
+  // CAPTURE APP-CRASH VECTOR SEARCH RESULTS
+  // ===========================================================================
+  // The vector-search procedure returns:
+  //
+  //     node
+  //     score
+  //
+  // node is renamed to dc because the returned node should be a DocumentChunk.
+  //
+  // score tells us how similar the chunk is to the app-crash-style query vector.
+
   MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+
+  // ===========================================================================
+  // EXPAND APP-CRASH RESULT TO ARTICLE AND ISSUE CONTEXT
+  // ===========================================================================
+  // This mandatory MATCH follows the same explanation path:
+  //
+  //     DocumentChunk -> KnowledgeArticle -> Issue
+  //
+  // For app-crash-style retrieval, we expect the retrieved chunks to connect to:
+  //
+  //     K003 - Fix app crash
+  //
+  // and then to:
+  //
+  //     App Crash
+  //
+  // This proves that semantic retrieval and graph context are aligned.
+
   OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+
+  // ===========================================================================
+  // OPTIONALLY FIND TICKETS RELATED TO THE APP-CRASH ISSUE
+  // ===========================================================================
+  // This finds Ticket nodes that are linked to the retrieved Issue.
+  //
+  // It is optional because the app-crash issue may or may not have related
+  // tickets in the current graph.
+
   OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+
+  // ===========================================================================
+  // OPTIONALLY FIND CUSTOMERS FOR APP-CRASH-RELATED TICKETS
+  // ===========================================================================
+  // This finds customers who raised the related tickets, if such customer
+  // relationships exist.
+
   OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+
+  // ===========================================================================
+  // OPTIONALLY FIND PRODUCTS FOR APP-CRASH-RELATED TICKETS
+  // ===========================================================================
+  // This finds products connected to the related tickets.
+  //
+  // For app-crash scenarios, this may commonly point to a mobile app or similar
+  // product node, depending on the dataset.
+
   OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+
+  // ===========================================================================
+  // OPTIONALLY FIND AGENTS FOR APP-CRASH-RELATED TICKETS
+  // ===========================================================================
+  // This finds support agents assigned to the related app-crash tickets.
 
   RETURN
     "App-crash-style explainable retrieval" AS testName,
@@ -13377,7 +14627,33 @@ CALL {
       louvainCommunityId: t.louvainCommunityId,
       labelPropagationCommunityId: t.labelPropagationCommunityId
     }) AS ticketAnalyticsContext
+
+  // ===========================================================================
+  // RETURN APP-CRASH EXPLAINABLE RETRIEVAL RESULT
+  // ===========================================================================
+  // This RETURN creates result rows for the app-crash-style test case.
+  //
+  // For a healthy lab result, the retrieved chunks should be related to:
+  //
+  // - app crash
+  // - mobile app crashing
+  // - update app
+  // - clear cache
+  // - restart device
+  // - device compatibility
+  //
+  // The parent article should usually be:
+  //
+  //     K003 - Fix app crash
+  //
+  // and the issue should usually be:
+  //
+  //     App Crash
+  //
+  // The same operational context fields are collected here so that the final
+  // combined output has a consistent shape across both test scenarios.
 }
+
 RETURN
   testName,
   chunkId,
@@ -13393,26 +14669,616 @@ RETURN
   relatedProducts,
   assignedAgents,
   ticketAnalyticsContext
+
+// =============================================================================
+// OUTER RETURN: DISPLAY COMBINED EXPLAINABLE RETRIEVAL RESULTS
+// =============================================================================
+// The outer RETURN receives all rows produced by the subquery.
+//
+// At this point, the subquery has already combined:
+//
+//     Payment-style explainable retrieval results
+//     App-crash-style explainable retrieval results
+//
+// The outer RETURN simply displays those results in one consistent final output.
+//
+// -----------------------------------------------------------------------------
+// testName
+// -----------------------------------------------------------------------------
+// Identifies which test scenario produced the row.
+//
+// This allows us to compare payment retrieval and app-crash retrieval in the
+// same output table.
+//
+// -----------------------------------------------------------------------------
+// chunkId
+// -----------------------------------------------------------------------------
+// Identifies the retrieved DocumentChunk.
+//
+// -----------------------------------------------------------------------------
+// retrievedChunk
+// -----------------------------------------------------------------------------
+// Shows the actual text retrieved by vector search.
+//
+// This is the content that would normally be used as grounding context in a RAG
+// workflow.
+//
+// -----------------------------------------------------------------------------
+// vectorScore
+// -----------------------------------------------------------------------------
+// Shows the vector similarity score.
+//
+// Higher means the chunk is more similar to that test vector.
+//
+// -----------------------------------------------------------------------------
+// articleId and articleTitle
+// -----------------------------------------------------------------------------
+// Trace the retrieved chunk back to its parent KnowledgeArticle.
+//
+// -----------------------------------------------------------------------------
+// issueId, issueName, and issueSeverity
+// -----------------------------------------------------------------------------
+// Explain the business issue solved by the article and show its severity.
+//
+// -----------------------------------------------------------------------------
+// relatedTicketIds
+// -----------------------------------------------------------------------------
+// Lists tickets connected to the issue.
+//
+// -----------------------------------------------------------------------------
+// relatedCustomers
+// -----------------------------------------------------------------------------
+// Lists customers who raised those tickets.
+//
+// -----------------------------------------------------------------------------
+// relatedProducts
+// -----------------------------------------------------------------------------
+// Lists products associated with those tickets.
+//
+// -----------------------------------------------------------------------------
+// assignedAgents
+// -----------------------------------------------------------------------------
+// Lists agents assigned to those tickets.
+//
+// -----------------------------------------------------------------------------
+// ticketAnalyticsContext
+// -----------------------------------------------------------------------------
+// Provides detailed ticket-level metadata and graph analytics scores.
+//
+// This field makes the retrieval result more explainable because it connects
+// semantic relevance to operational and graph-analytics context.
+
 ORDER BY
   testName,
   vectorScore DESC;
+
+// =============================================================================
+// SORT RESULTS BY TEST CASE AND VECTOR SCORE
+// =============================================================================
+// ORDER BY controls how the final combined output is displayed.
+//
+// The sorting logic is:
+//
+//     1. Sort by testName.
+//     2. Within each testName group, sort by vectorScore descending.
+//
+// -----------------------------------------------------------------------------
+// Why sort by testName?
+// -----------------------------------------------------------------------------
+// Sorting by testName groups the two test scenarios separately.
+//
+// This makes the output easier to inspect:
+//
+//     App-crash-style explainable retrieval
+//       highest score
+//       second highest score
+//
+//     Payment-style explainable retrieval
+//       highest score
+//       second highest score
+//
+// Depending on alphabetical order, App-crash may appear before Payment.
+//
+// -----------------------------------------------------------------------------
+// Why sort by vectorScore DESC?
+// -----------------------------------------------------------------------------
+// Within each test group, we want the strongest vector match first.
+//
+// DESC means descending order, so the highest score appears at the top.
+//
+// This is important because retrieval ranking matters.
+//
+// The best chunk should be reviewed first and would usually be the strongest
+// candidate for LLM grounding context.
+//
+// =============================================================================
+// EXPECTED HEALTHY RESULT
+// =============================================================================
+// For the payment-style vector:
+//
+//     [0.08, 0.92, 0.12]
+//
+// expected top chunks should be payment-related, usually from:
+//
+//     K002 - Resolve payment failure
+//
+// and connected to:
+//
+//     Payment Failure
+//
+// For the app-crash-style vector:
+//
+//     [0.12, 0.10, 0.92]
+//
+// expected top chunks should be app-crash-related, usually from:
+//
+//     K003 - Fix app crash
+//
+// and connected to:
+//
+//     App Crash
+//
+// If the results match those expectations, it means:
+//
+// - the vector index is working
+// - embeddings are topic-aligned
+// - chunks are connected to articles
+// - articles are connected to issues
+// - optional operational context can be collected
+// - graph analytics metadata can be returned with retrieval results
+//
+// =============================================================================
+// FINAL TAKEAWAY
+// =============================================================================
+// This query validates multi-scenario explainable graph-RAG retrieval.
+//
+// The complete flow is:
+//
+//     1. Run payment-style vector search.
+//     2. Retrieve the top 2 payment-like chunks.
+//     3. Expand each chunk to article and issue context.
+//     4. Collect optional ticket/customer/product/agent context.
+//     5. Collect ticket analytics metadata.
+//     6. Run app-crash-style vector search.
+//     7. Retrieve the top 2 app-crash-like chunks.
+//     8. Expand each chunk to article and issue context.
+//     9. Collect optional operational and analytics context again.
+//     10. Combine both result sets using UNION ALL.
+//     11. Return one explainable retrieval report.
+//     12. Sort by test name and vector score.
+//
+// The main learning point is:
+//
+//     Vector search gives semantic relevance.
+//     Graph traversal gives source and business explanation.
+//     Optional matches give operational context.
+//     Graph analytics properties give deeper prioritization signals.
+//
+// This is why graph-enhanced RAG is more powerful than plain vector search.
+//
+// Plain vector search can say:
+//
+//     "This text is similar."
+//
+// Graph-enhanced retrieval can say:
+//
+//     "This text is similar,
+//      it comes from this article,
+//      it solves this issue,
+//      it relates to these tickets/customers/products/agents,
+//      and these analytics scores explain the surrounding graph importance."
 ```
 
 # Addendum B — Step B3: Clean App Crash explainable output
 
 ```cypher
+// =============================================================================
+// APP-CRASH-STYLE CLEANED EXPLAINABLE GRAPH-ENHANCED VECTOR RETRIEVAL QUERY
+// =============================================================================
+// This query performs an explainable vector retrieval workflow for an
+// app-crash-style search intent.
+//
+// In simple terms, it answers this question:
+//
+//     "For an app-crash-style query vector, which document chunks are most
+//      relevant, which article and issue do they connect to, and what optional
+//      ticket/customer/product/agent/analytics context exists around that issue?"
+//
+// This query is a cleaned version of the earlier explainable retrieval query.
+//
+// The key improvement is:
+//
+//     It avoids returning a meaningless ticket analytics object full of null
+//     values when no related Ticket exists.
+//
+// Earlier, when OPTIONAL MATCH did not find a ticket, a collection like this
+// could still produce a map where every ticket field was null:
+//
+//     {
+//       ticketId: null,
+//       priority: null,
+//       status: null,
+//       fullDegreeScore: null,
+//       pageRankScore: null,
+//       ...
+//     }
+//
+// That kind of output is technically explainable, but not very clean.
+//
+// In this query, we use a CASE expression:
+//
+//     CASE
+//       WHEN t IS NULL THEN null
+//       ELSE { ticket analytics map }
+//     END
+//
+// This makes the output more intentional. It clearly separates:
+//
+//     "No ticket exists"
+//
+// from:
+//
+//     "A ticket exists and here is its analytics context."
+//
+// The query also adds an operationalContextStatus field, which gives a readable
+// explanation:
+//
+//     "No related ticket found for this issue"
+//
+// or:
+//
+//     "Related ticket context found"
+//
+// This makes the result easier to understand for students, support analysts,
+// demos, and documentation.
+
 CALL db.index.vector.queryNodes(
   'documentChunk_embedding_vector',
   2,
   [0.12, 0.10, 0.92]
 )
+
+// =============================================================================
+// STEP 1: RUN VECTOR SIMILARITY SEARCH FOR APP-CRASH INTENT
+// =============================================================================
+// CALL executes a Neo4j procedure.
+//
+// Here we call:
+//
+//     db.index.vector.queryNodes()
+//
+// This procedure searches a vector index and returns nodes whose stored
+// embedding vectors are most similar to the query vector.
+//
+// In this project, the vector index:
+//
+//     documentChunk_embedding_vector
+//
+// was created on:
+//
+//     (:DocumentChunk).embedding
+//
+// That means the procedure searches DocumentChunk nodes by comparing their
+// embedding vectors against the query vector.
+//
+// -----------------------------------------------------------------------------
+// Parameter 1: 'documentChunk_embedding_vector'
+// -----------------------------------------------------------------------------
+// This is the name of the vector index to search.
+//
+// It tells Neo4j:
+//
+//     "Use the vector index built on DocumentChunk.embedding."
+//
+// The index name must match exactly. If the name is misspelled, Neo4j will not
+// search the intended index.
+//
+// -----------------------------------------------------------------------------
+// Parameter 2: 2
+// -----------------------------------------------------------------------------
+// This tells Neo4j to return the top 2 most similar nodes.
+//
+// This is called top-k retrieval.
+//
+// Here, k = 2.
+//
+// For this lab, the app-crash article has two app-crash-related chunks:
+//
+//     C-K003-001
+//     C-K003-002
+//
+// So top 2 is a focused test. It should return the two strongest app-crash
+// chunks without pulling in weaker unrelated chunks.
+//
+// -----------------------------------------------------------------------------
+// Parameter 3: [0.12, 0.10, 0.92]
+// -----------------------------------------------------------------------------
+// This is the query embedding vector.
+//
+// In a real-world RAG application, this vector would usually be generated from
+// a user's natural-language question, such as:
+//
+//     "The mobile app keeps crashing on my device."
+//
+// The application would convert that question into an embedding vector using
+// the same embedding model used for the stored chunk embeddings.
+//
+// In this lab, we manually provide a simple 3-dimensional demo vector:
+//
+//     [0.12, 0.10, 0.92]
+//
+// This vector is app-crash-oriented because the third dimension is high.
+//
+// Earlier, app-crash chunks were assigned vectors close to this:
+//
+//     C-K003-001 -> [0.10, 0.10, 0.95]
+//     C-K003-002 -> [0.15, 0.10, 0.90]
+//
+// So the expected behavior is:
+//
+//     The top 2 returned chunks should be app-crash-related chunks.
+//
+// -----------------------------------------------------------------------------
+// Why the query vector must have 3 values
+// -----------------------------------------------------------------------------
+// The vector index was configured with:
+//
+//     vector.dimensions = 3
+//
+// Therefore, every query vector passed to this index must also contain exactly
+// three numeric values.
+//
+// This query vector is valid because it has three values:
+//
+//     0.12
+//     0.10
+//     0.92
+
 YIELD node AS dc, score
 
+// =============================================================================
+// STEP 2: CAPTURE VECTOR SEARCH OUTPUT
+// =============================================================================
+// YIELD receives the output from the vector search procedure.
+//
+// The procedure returns:
+//
+//     node
+//     score
+//
+// -----------------------------------------------------------------------------
+// node AS dc
+// -----------------------------------------------------------------------------
+// node is the graph node returned by the vector index.
+//
+// Since the index was created on DocumentChunk.embedding, each returned node
+// should be a DocumentChunk.
+//
+// We rename node to dc:
+//
+//     node AS dc
+//
+// This makes the rest of the query easier to read because dc clearly means:
+//
+//     DocumentChunk
+//
+// After this alias, we can access properties such as:
+//
+//     dc.chunkId
+//     dc.text
+//     dc.embedding
+//
+// -----------------------------------------------------------------------------
+// score
+// -----------------------------------------------------------------------------
+// score is the similarity score between the query vector and the stored embedding
+// on the returned DocumentChunk.
+//
+// Because the vector index uses cosine similarity, a higher score means the
+// stored chunk embedding is more similar to the query vector.
+//
+// In simple terms:
+//
+//     Higher score = stronger semantic match
+//
+// Later, we rename this value to vectorScore so it is not confused with graph
+// analytics scores such as PageRank, degree, or betweenness.
+
 MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+
+// =============================================================================
+// STEP 3: EXPAND RETRIEVED CHUNK TO ARTICLE AND ISSUE
+// =============================================================================
+// After vector search retrieves the most similar chunks, this MATCH clause
+// follows the graph relationships from each retrieved DocumentChunk.
+//
+// The pattern is:
+//
+//     (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+//
+// In plain English:
+//
+//     "For each retrieved chunk,
+//      find the KnowledgeArticle it is part of,
+//      then find the Issue solved by that KnowledgeArticle."
+//
+// This is the first explainability layer.
+//
+// Vector search tells us:
+//
+//     "This chunk is semantically similar to the app-crash-style query vector."
+//
+// Graph traversal tells us:
+//
+//     "This chunk comes from this article,
+//      and this article solves this issue."
+//
+// -----------------------------------------------------------------------------
+// (dc)-[:PART_OF]->(ka:KnowledgeArticle)
+// -----------------------------------------------------------------------------
+// The PART_OF relationship connects a DocumentChunk to its parent
+// KnowledgeArticle.
+//
+// Example:
+//
+//     (:DocumentChunk {chunkId: "C-K003-001"})
+//         -[:PART_OF]->
+//     (:KnowledgeArticle {articleId: "K003"})
+//
+// This gives source lineage.
+//
+// Without this relationship, we may retrieve useful text, but we would not easily
+// know which article the text came from.
+//
+// -----------------------------------------------------------------------------
+// (ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+// -----------------------------------------------------------------------------
+// The SOLVES relationship connects a KnowledgeArticle to the Issue it solves.
+//
+// Example:
+//
+//     (:KnowledgeArticle {articleId: "K003"})
+//         -[:SOLVES]->
+//     (:Issue {name: "App Crash"})
+//
+// This adds business meaning to the retrieved chunk.
+//
+// For an app-crash-style query vector, we expect the retrieved chunks to connect
+// to:
+//
+//     K003 - Fix app crash
+//
+// and then to:
+//
+//     App Crash
+//
+// -----------------------------------------------------------------------------
+// Why this is a mandatory MATCH
+// -----------------------------------------------------------------------------
+// This query uses MATCH, not OPTIONAL MATCH, for the chunk -> article -> issue
+// path because this path is required for explainable retrieval.
+//
+// If a retrieved chunk cannot be traced to an article and issue, then it is not
+// complete enough for this specific result.
+//
+// So this MATCH keeps only retrieval results that have the required graph
+// lineage and business context.
+
 OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+
+// =============================================================================
+// STEP 4: OPTIONALLY FIND TICKETS RELATED TO THE ISSUE
+// =============================================================================
+// OPTIONAL MATCH tries to find additional graph context without removing the
+// main retrieval result if that context is missing.
+//
+// This pattern is:
+//
+//     (t:Ticket)-[:HAS_ISSUE]->(i)
+//
+// In plain English:
+//
+//     "Find tickets that are linked to the retrieved Issue."
+//
+// Example:
+//
+//     (:Ticket {ticketId: "T003"})
+//         -[:HAS_ISSUE]->
+//     (:Issue {name: "App Crash"})
+//
+// -----------------------------------------------------------------------------
+// Why OPTIONAL MATCH is used here
+// -----------------------------------------------------------------------------
+// Ticket context is helpful, but it should not be required.
+//
+// The retrieved chunk is still valid even if no ticket is connected to the issue.
+//
+// If we used MATCH instead of OPTIONAL MATCH, then any issue without tickets
+// would cause the retrieval result to disappear.
+//
+// OPTIONAL MATCH preserves the retrieved chunk/article/issue row and adds ticket
+// details only when they exist.
+
 OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+
+// =============================================================================
+// STEP 5: OPTIONALLY FIND CUSTOMERS WHO RAISED RELATED TICKETS
+// =============================================================================
+// This OPTIONAL MATCH expands from related tickets to customers.
+//
+// The pattern is:
+//
+//     (c:Customer)-[:RAISED]->(t)
+//
+// In plain English:
+//
+//     "Find customers who raised the related tickets."
+//
+// Example:
+//
+//     (:Customer {name: "Neha"})
+//         -[:RAISED]->
+//     (:Ticket {ticketId: "T003"})
+//
+// This helps answer:
+//
+//     "Which customers are affected by this issue?"
+//
+// Because this is optional, the result still appears even when customer context
+// is missing.
+
 OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+
+// =============================================================================
+// STEP 6: OPTIONALLY FIND PRODUCTS ASSOCIATED WITH RELATED TICKETS
+// =============================================================================
+// This OPTIONAL MATCH finds products connected to the related tickets.
+//
+// The pattern is:
+//
+//     (t)-[:ABOUT]->(p:Product)
+//
+// In plain English:
+//
+//     "Find the product that the ticket is about."
+//
+// Example:
+//
+//     (:Ticket {ticketId: "T003"})
+//         -[:ABOUT]->
+//     (:Product {name: "Mobile App"})
+//
+// This is especially useful for app-crash issues because crashes often depend on
+// product, platform, device, app version, or compatibility context.
+
 OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+
+// =============================================================================
+// STEP 7: OPTIONALLY FIND AGENTS ASSIGNED TO RELATED TICKETS
+// =============================================================================
+// This OPTIONAL MATCH finds support agents assigned to related tickets.
+//
+// The pattern is:
+//
+//     (t)-[:ASSIGNED_TO]->(a:Agent)
+//
+// In plain English:
+//
+//     "Find the agent assigned to the ticket."
+//
+// Example:
+//
+//     (:Ticket {ticketId: "T003"})
+//         -[:ASSIGNED_TO]->
+//     (:Agent {name: "Priya"})
+//
+// Agent context is useful for:
+//
+// - ownership visibility
+// - escalation workflows
+// - identifying who handled similar issues
+// - routing new issues to experienced agents
+// - understanding support workload
 
 RETURN
   "App-crash-style cleaned explainable retrieval" AS testName,
@@ -13453,7 +15319,477 @@ RETURN
     ELSE "Related ticket context found"
   END AS operationalContextStatus
 
+// =============================================================================
+// STEP 8: RETURN CLEANED EXPLAINABLE RETRIEVAL OUTPUT
+// =============================================================================
+// RETURN defines the final output table.
+//
+// This output combines:
+//
+// - semantic vector retrieval result
+// - parent knowledge article context
+// - issue context
+// - optional ticket/customer/product/agent context
+// - cleaned ticket analytics context
+// - human-readable operational context status
+//
+// Because this RETURN uses aggregate functions such as collect() and count(),
+// Neo4j groups results by all non-aggregated returned values:
+//
+// - testName
+// - chunkId
+// - retrievedChunk
+// - vectorScore
+// - articleId
+// - articleTitle
+// - issueId
+// - issueName
+// - issueSeverity
+//
+// So the final output is usually one row per retrieved chunk, enriched with
+// collected operational context.
+//
+// -----------------------------------------------------------------------------
+// "App-crash-style cleaned explainable retrieval" AS testName
+// -----------------------------------------------------------------------------
+// This hardcoded value labels the test scenario.
+//
+// It tells anyone reading the output:
+//
+//     "This result came from the app-crash-style cleaned explainable retrieval
+//      test."
+//
+// The word "cleaned" is useful because this query intentionally handles missing
+// ticket context more neatly than the earlier version.
+//
+// -----------------------------------------------------------------------------
+// dc.chunkId AS chunkId
+// -----------------------------------------------------------------------------
+// chunkId identifies the retrieved DocumentChunk.
+//
+// Expected app-crash chunks may include:
+//
+//     C-K003-001
+//     C-K003-002
+//
+// This helps trace exactly which chunk was returned by vector search.
+//
+// -----------------------------------------------------------------------------
+// dc.text AS retrievedChunk
+// -----------------------------------------------------------------------------
+// retrievedChunk is the actual text stored in the retrieved DocumentChunk.
+//
+// This is the content that may be passed to an LLM as grounding context.
+//
+// For an app-crash-style query, we expect this text to mention ideas like:
+//
+// - mobile app crashes
+// - update the app
+// - clear cache
+// - restart the device
+// - device compatibility
+//
+// -----------------------------------------------------------------------------
+// score AS vectorScore
+// -----------------------------------------------------------------------------
+// vectorScore is the vector similarity score.
+//
+// We rename score to vectorScore because this query also returns graph analytics
+// values such as:
+//
+// - fullDegreeScore
+// - pageRankScore
+// - betweennessScore
+//
+// This avoids confusion between semantic similarity and graph-analytics metrics.
+//
+// -----------------------------------------------------------------------------
+// ka.articleId AS articleId
+// -----------------------------------------------------------------------------
+// articleId identifies the parent KnowledgeArticle.
+//
+// For app-crash chunks, the expected article is usually:
+//
+//     K003
+//
+// -----------------------------------------------------------------------------
+// ka.title AS articleTitle
+// -----------------------------------------------------------------------------
+// articleTitle gives the readable title of the parent KnowledgeArticle.
+//
+// For app-crash chunks, this should usually be:
+//
+//     Fix app crash
+//
+// -----------------------------------------------------------------------------
+// i.issueId AS issueId
+// -----------------------------------------------------------------------------
+// issueId identifies the Issue node solved by the article.
+//
+// This provides stable issue-level traceability.
+//
+// -----------------------------------------------------------------------------
+// i.name AS issueName
+// -----------------------------------------------------------------------------
+// issueName gives the readable name of the issue.
+//
+// For this app-crash-style query, the expected issue name is usually:
+//
+//     App Crash
+//
+// This confirms that the vector retrieval result is connected to the expected
+// business issue.
+//
+// -----------------------------------------------------------------------------
+// i.severity AS issueSeverity
+// -----------------------------------------------------------------------------
+// issueSeverity shows the business severity of the issue.
+//
+// Example values might be:
+//
+//     High
+//     Medium
+//     Low
+//     Critical
+//
+// Severity is useful because a retrieved answer for a high-severity issue may
+// require more urgent handling, escalation, or careful wording.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT t.ticketId) AS relatedTicketIds
+// -----------------------------------------------------------------------------
+// This collects all unique ticket IDs related to the issue.
+//
+// Example:
+//
+//     ["T003", "T007"]
+//
+// DISTINCT is important because optional matches can multiply rows.
+//
+// For example, if a ticket is connected to a customer, product, and agent, the
+// same ticket may appear multiple times in intermediate rows.
+//
+// collect(DISTINCT ...) keeps the final list clean.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT c.name) AS relatedCustomers
+// -----------------------------------------------------------------------------
+// This collects unique customer names who raised related tickets.
+//
+// Example:
+//
+//     ["Amit", "Neha"]
+//
+// This helps explain customer impact.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT p.name) AS relatedProducts
+// -----------------------------------------------------------------------------
+// This collects unique products associated with related tickets.
+//
+// Example:
+//
+//     ["Mobile App"]
+//
+// This helps explain product impact.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT a.name) AS assignedAgents
+// -----------------------------------------------------------------------------
+// This collects unique agents assigned to related tickets.
+//
+// Example:
+//
+//     ["Priya", "Rahul"]
+//
+// This helps explain ownership and operational routing.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT CASE WHEN t IS NULL THEN null ELSE {...} END)
+// -----------------------------------------------------------------------------
+// This is the main cleanup improvement in the query.
+//
+// Let us understand why it exists.
+//
+// Because t comes from an OPTIONAL MATCH, t may be null.
+//
+// If no related ticket exists, then ticket properties such as:
+//
+//     t.ticketId
+//     t.priority
+//     t.status
+//
+// are also null.
+//
+// Without the CASE expression, the query may collect a map like:
+//
+//     {
+//       ticketId: null,
+//       priority: null,
+//       status: null,
+//       fullDegreeScore: null,
+//       pageRankScore: null,
+//       betweennessScore: null,
+//       louvainCommunityId: null,
+//       labelPropagationCommunityId: null
+//     }
+//
+// That output can be confusing because it looks like a ticket analytics object,
+// but it does not represent a real ticket.
+//
+// The CASE expression makes the intent clearer:
+//
+//     If t is null:
+//       collect null
+//
+//     If t exists:
+//       collect the real ticket analytics map
+//
+// -----------------------------------------------------------------------------
+// WHEN t IS NULL THEN null
+// -----------------------------------------------------------------------------
+// This branch handles the case where no related Ticket was found.
+//
+// It prevents the query from constructing a fake analytics map from null ticket
+// properties.
+//
+// -----------------------------------------------------------------------------
+// ELSE { ticket analytics map }
+// -----------------------------------------------------------------------------
+// This branch runs only when a real Ticket node exists.
+//
+// It creates a structured map containing:
+//
+// - ticketId
+// - priority
+// - status
+// - fullDegreeScore
+// - pageRankScore
+// - betweennessScore
+// - louvainCommunityId
+// - labelPropagationCommunityId
+//
+// This map gives operational and graph-analytics context for each related ticket.
+//
+// -----------------------------------------------------------------------------
+// ticketId
+// -----------------------------------------------------------------------------
+// ticketId identifies the related support ticket.
+//
+// -----------------------------------------------------------------------------
+// priority
+// -----------------------------------------------------------------------------
+// priority shows the operational urgency of the ticket.
+//
+// Example:
+//
+//     High
+//     Medium
+//     Low
+//
+// -----------------------------------------------------------------------------
+// status
+// -----------------------------------------------------------------------------
+// status shows the current lifecycle state of the ticket.
+//
+// Example:
+//
+//     Open
+//     In Progress
+//     Resolved
+//     Closed
+//
+// -----------------------------------------------------------------------------
+// fullDegreeScore
+// -----------------------------------------------------------------------------
+// fullDegreeScore usually represents how connected the ticket is in the graph.
+//
+// A higher degree can indicate that the ticket has many relationships and may be
+// operationally important.
+//
+// -----------------------------------------------------------------------------
+// pageRankScore
+// -----------------------------------------------------------------------------
+// pageRankScore is a graph-analytics measure that can indicate relative
+// importance or influence inside the graph.
+//
+// A ticket with a higher PageRank score may be more central in the support
+// network.
+//
+// -----------------------------------------------------------------------------
+// betweennessScore
+// -----------------------------------------------------------------------------
+// betweennessScore can indicate whether a ticket acts as a bridge between
+// different parts of the graph.
+//
+// A high value may suggest the ticket connects otherwise separate clusters or
+// workflows.
+//
+// -----------------------------------------------------------------------------
+// louvainCommunityId
+// -----------------------------------------------------------------------------
+// louvainCommunityId identifies the community assigned by the Louvain community
+// detection algorithm.
+//
+// This helps group related tickets into structural communities.
+//
+// -----------------------------------------------------------------------------
+// labelPropagationCommunityId
+// -----------------------------------------------------------------------------
+// labelPropagationCommunityId identifies the community assigned by label
+// propagation.
+//
+// This gives another view of graph community membership.
+//
+// -----------------------------------------------------------------------------
+// AS ticketAnalyticsContext
+// -----------------------------------------------------------------------------
+// The final collected list is returned as ticketAnalyticsContext.
+//
+// This field gives analytics-enriched context around the retrieved issue.
+//
+// If no ticket exists, this may contain null depending on Neo4j collection
+// behavior.
+//
+// If a cleaner empty list is required, a later refinement can filter null values
+// using list comprehension.
+//
+// -----------------------------------------------------------------------------
+// CASE WHEN count(t) = 0 THEN ... ELSE ... END AS operationalContextStatus
+// -----------------------------------------------------------------------------
+// This creates a human-readable status message based on whether related tickets
+// were found.
+//
+// This is very useful for demos and lab guides because it explains the result
+// directly.
+//
+// -----------------------------------------------------------------------------
+// WHEN count(t) = 0
+// -----------------------------------------------------------------------------
+// count(t) counts only non-null Ticket nodes.
+//
+// If no Ticket nodes were found by the OPTIONAL MATCH, count(t) returns:
+//
+//     0
+//
+// In that case, the query returns:
+//
+//     "No related ticket found for this issue"
+//
+// This tells the reader:
+//
+//     "The retrieved chunk/article/issue is valid,
+//      but there is no operational ticket context for this issue."
+//
+// -----------------------------------------------------------------------------
+// ELSE "Related ticket context found"
+// -----------------------------------------------------------------------------
+// If count(t) is greater than 0, then at least one related Ticket exists.
+//
+// In that case, the query returns:
+//
+//     "Related ticket context found"
+//
+// This tells the reader:
+//
+//     "The retrieved issue has related operational ticket context available."
+
 ORDER BY vectorScore DESC;
+
+// =============================================================================
+// STEP 9: SORT BY BEST VECTOR MATCH FIRST
+// =============================================================================
+// ORDER BY vectorScore DESC sorts the final result by vector similarity score
+// from highest to lowest.
+//
+// DESC means descending order.
+//
+// This ensures the strongest semantic match appears first.
+//
+// Since the query vector is:
+//
+//     [0.12, 0.10, 0.92]
+//
+// and the app-crash chunks are close to it:
+//
+//     C-K003-001 -> [0.10, 0.10, 0.95]
+//     C-K003-002 -> [0.15, 0.10, 0.90]
+//
+// we expect the two retrieved rows to be app-crash-related chunks, sorted by
+// their similarity scores.
+//
+// -----------------------------------------------------------------------------
+// Why sorting matters
+// -----------------------------------------------------------------------------
+// In retrieval systems, ranking matters.
+//
+// The highest-scoring chunk is usually the best candidate for grounding an LLM
+// response.
+//
+// Sorting by vectorScore makes the output:
+//
+// - easier to inspect
+// - easier to explain
+// - easier to validate
+// - better suited for lab screenshots and documentation
+//
+// =============================================================================
+// EXPECTED HEALTHY RESULT
+// =============================================================================
+// For this app-crash-style vector:
+//
+//     [0.12, 0.10, 0.92]
+//
+// expected top chunks should usually be:
+//
+//     C-K003-001
+//     C-K003-002
+//
+// expected article:
+//
+//     K003 - Fix app crash
+//
+// expected issue:
+//
+//     App Crash
+//
+// If related tickets exist, operationalContextStatus should be:
+//
+//     Related ticket context found
+//
+// If no related tickets exist, operationalContextStatus should be:
+//
+//     No related ticket found for this issue
+//
+// =============================================================================
+// FINAL TAKEAWAY
+// =============================================================================
+// This query demonstrates cleaned explainable graph-enhanced retrieval.
+//
+// The complete flow is:
+//
+//     1. Use an app-crash-style vector to search DocumentChunk embeddings.
+//     2. Retrieve the top 2 most similar chunks.
+//     3. Capture each chunk and its vector similarity score.
+//     4. Traverse from chunk to KnowledgeArticle using PART_OF.
+//     5. Traverse from KnowledgeArticle to Issue using SOLVES.
+//     6. Optionally collect related tickets using HAS_ISSUE.
+//     7. Optionally collect customers using RAISED.
+//     8. Optionally collect products using ABOUT.
+//     9. Optionally collect assigned agents using ASSIGNED_TO.
+//     10. Clean the ticket analytics context using CASE.
+//     11. Add a readable operationalContextStatus message.
+//     12. Sort by vectorScore so the strongest match appears first.
+//
+// The main learning point is:
+//
+//     Vector search retrieves relevant knowledge.
+//     Graph traversal explains that knowledge.
+//     OPTIONAL MATCH adds operational context when available.
+//     CASE helps keep optional context clean and understandable.
+//
+// This is a production-friendly improvement because the result does not blindly
+// create a fake analytics object when no ticket exists.
 ```
 
 ### Why we clean null analytics context
@@ -13477,50 +15813,514 @@ This makes the output easier to interpret and safer for APIs, dashboards, and Gr
 # Addendum B — Step B4: Clean explainable GraphRAG query for all three test vectors
 
 ```cypher
+// =============================================================================
+// MULTI-INTENT CLEANED EXPLAINABLE GRAPH-ENHANCED VECTOR RETRIEVAL QUERY
+// =============================================================================
+// This query runs three different vector-search test cases against the same
+// DocumentChunk vector index:
+//
+//     1. Login-style cleaned explainable retrieval
+//     2. Payment-style cleaned explainable retrieval
+//     3. App-crash-style cleaned explainable retrieval
+//
+// In simple terms, it answers this question:
+//
+//     "For three different user intents — login, payment, and app crash —
+//      can Neo4j retrieve the most relevant document chunks and then explain
+//      each result using article, issue, ticket, customer, product, agent,
+//      and graph analytics context?"
+//
+// This is an advanced graph-RAG validation query.
+//
+// A basic vector search only tells us:
+//
+//     "These chunks are semantically similar to the query vector."
+//
+// But this query goes much further.
+//
+// It performs semantic retrieval first, then expands each retrieved chunk through
+// the graph:
+//
+//     DocumentChunk
+//       -> KnowledgeArticle
+//       -> Issue
+//       -> Ticket
+//       -> Customer
+//       -> Product
+//       -> Agent
+//       -> Ticket analytics context
+//
+// The mandatory graph path is:
+//
+//     (:DocumentChunk)-[:PART_OF]->(:KnowledgeArticle)-[:SOLVES]->(:Issue)
+//
+// This path gives every retrieved chunk source traceability and business meaning.
+//
+// Then optional context is collected through:
+//
+//     (:Ticket)-[:HAS_ISSUE]->(:Issue)
+//     (:Customer)-[:RAISED]->(:Ticket)
+//     (:Ticket)-[:ABOUT]->(:Product)
+//     (:Ticket)-[:ASSIGNED_TO]->(:Agent)
+//
+// This makes the retrieval output explainable, operationally useful, and suitable
+// for RAG-style demonstrations.
+//
+// The query also uses a cleaned ticket analytics collection pattern:
+//
+//     CASE
+//       WHEN t IS NULL THEN null
+//       ELSE { ticket analytics map }
+//     END
+//
+// This avoids creating a fake ticket analytics map full of null values when no
+// related ticket exists.
+
 CALL {
+
+  // ===========================================================================
+  // SUBQUERY: RUN MULTIPLE VECTOR SEARCH TEST CASES
+  // ===========================================================================
+  // CALL { ... } creates a subquery.
+  //
+  // A subquery lets us run a block of Cypher and pass its returned rows to the
+  // outer query.
+  //
+  // In this case, the subquery performs three separate vector searches:
+  //
+  //     1. Login-style vector search
+  //     2. Payment-style vector search
+  //     3. App-crash-style vector search
+  //
+  // Each search returns the same three columns:
+  //
+  //     testName
+  //     dc
+  //     score
+  //
+  // This common shape is important because UNION ALL requires each branch to
+  // return the same columns.
+  //
+  // The outer query then takes those returned chunks and expands them into graph
+  // context only once.
+  //
+  // This is cleaner than repeating the same MATCH and OPTIONAL MATCH logic in
+  // every UNION branch.
+  //
+  // In other words:
+  //
+  //     The subquery is responsible for retrieval.
+  //     The outer query is responsible for explanation.
+
   CALL db.index.vector.queryNodes(
     'documentChunk_embedding_vector',
     2,
     [0.92, 0.12, 0.05]
   )
+
+  // ===========================================================================
+  // TEST CASE 1: LOGIN-STYLE VECTOR SEARCH
+  // ===========================================================================
+  // This procedure call searches the vector index using a login-oriented query
+  // vector.
+  //
+  // The procedure:
+  //
+  //     db.index.vector.queryNodes()
+  //
+  // searches a vector index and returns nodes whose stored embedding vectors are
+  // most similar to the query vector.
+  //
+  // ---------------------------------------------------------------------------
+  // Parameter 1: 'documentChunk_embedding_vector'
+  // ---------------------------------------------------------------------------
+  // This is the name of the vector index.
+  //
+  // Earlier, this index was created on:
+  //
+  //     (:DocumentChunk).embedding
+  //
+  // So this search compares the query vector against the embedding property of
+  // DocumentChunk nodes.
+  //
+  // ---------------------------------------------------------------------------
+  // Parameter 2: 2
+  // ---------------------------------------------------------------------------
+  // This tells Neo4j to return the top 2 most similar chunks.
+  //
+  // This is called top-k retrieval.
+  //
+  // Here, k = 2.
+  //
+  // For this lab, each topic has two chunks, so top 2 is a focused test.
+  //
+  // For the login topic, we expect two login-related chunks:
+  //
+  //     C-K001-001
+  //     C-K001-002
+  //
+  // ---------------------------------------------------------------------------
+  // Parameter 3: [0.92, 0.12, 0.05]
+  // ---------------------------------------------------------------------------
+  // This is the login-style query vector.
+  //
+  // It has a high first dimension:
+  //
+  //     0.92
+  //
+  // That makes it close to login-related demo vectors such as:
+  //
+  //     [0.95, 0.10, 0.05]
+  //     [0.90, 0.15, 0.05]
+  //
+  // So we expect this search to retrieve login-related chunks first.
+
   YIELD node AS dc, score
+
+  // ===========================================================================
+  // CAPTURE LOGIN VECTOR SEARCH RESULTS
+  // ===========================================================================
+  // YIELD receives the result from the vector-search procedure.
+  //
+  // The procedure returns:
+  //
+  //     node
+  //     score
+  //
+  // node is renamed to dc because the returned node should be a DocumentChunk.
+  //
+  // score is the vector similarity score.
+  //
+  // A higher score means the returned chunk is more similar to the login-style
+  // query vector.
+
   RETURN
     "Login-style cleaned explainable retrieval" AS testName,
     dc,
     score
 
+  // ===========================================================================
+  // RETURN LOGIN TEST RESULT TO THE SUBQUERY OUTPUT
+  // ===========================================================================
+  // This RETURN does not yet expand into article, issue, or ticket context.
+  //
+  // It only returns:
+  //
+  //     testName -> identifies the retrieval scenario
+  //     dc       -> the retrieved DocumentChunk node
+  //     score    -> the vector similarity score
+  //
+  // The outer query will use dc and score to perform the common graph expansion.
+  //
+  // This is a clean design because it avoids duplicating the explanation logic
+  // for every test vector.
+
   UNION ALL
+
+  // ===========================================================================
+  // UNION ALL: ADD PAYMENT TEST RESULTS TO THE SAME SUBQUERY STREAM
+  // ===========================================================================
+  // UNION ALL combines the rows from the login test with rows from the payment
+  // test.
+  //
+  // We use UNION ALL instead of UNION because UNION ALL preserves all rows.
+  //
+  // That is better for validation because we do not want Neo4j to remove rows
+  // just because they happen to look similar.
+  //
+  // Every branch must return the same columns:
+  //
+  //     testName
+  //     dc
+  //     score
 
   CALL db.index.vector.queryNodes(
     'documentChunk_embedding_vector',
     2,
     [0.08, 0.92, 0.12]
   )
+
+  // ===========================================================================
+  // TEST CASE 2: PAYMENT-STYLE VECTOR SEARCH
+  // ===========================================================================
+  // This procedure call searches the same vector index using a payment-oriented
+  // query vector.
+  //
+  // The index is still:
+  //
+  //     documentChunk_embedding_vector
+  //
+  // The top-k value is still:
+  //
+  //     2
+  //
+  // The query vector is:
+  //
+  //     [0.08, 0.92, 0.12]
+  //
+  // This vector has a high second dimension:
+  //
+  //     0.92
+  //
+  // That makes it close to payment-related demo vectors such as:
+  //
+  //     [0.05, 0.95, 0.10]
+  //     [0.10, 0.90, 0.15]
+  //
+  // So we expect this search to retrieve payment-related chunks first.
+
   YIELD node AS dc, score
+
+  // ===========================================================================
+  // CAPTURE PAYMENT VECTOR SEARCH RESULTS
+  // ===========================================================================
+  // node is renamed to dc because the returned node should be a DocumentChunk.
+  //
+  // score tells us how similar the chunk is to the payment-style vector.
+  //
+  // For a healthy lab result, the top chunks should usually be:
+  //
+  //     C-K002-001
+  //     C-K002-002
+
   RETURN
     "Payment-style cleaned explainable retrieval" AS testName,
     dc,
     score
 
+  // ===========================================================================
+  // RETURN PAYMENT TEST RESULT TO THE SUBQUERY OUTPUT
+  // ===========================================================================
+  // This branch returns the same three columns as the login branch:
+  //
+  //     testName
+  //     dc
+  //     score
+  //
+  // This keeps the UNION ALL output consistent.
+
   UNION ALL
+
+  // ===========================================================================
+  // UNION ALL: ADD APP-CRASH TEST RESULTS TO THE SAME SUBQUERY STREAM
+  // ===========================================================================
+  // This third UNION ALL branch adds the app-crash test results to the same
+  // subquery output stream.
+  //
+  // After this branch completes, the subquery will contain retrieved chunks from
+  // all three scenarios:
+  //
+  //     Login
+  //     Payment
+  //     App crash
 
   CALL db.index.vector.queryNodes(
     'documentChunk_embedding_vector',
     2,
     [0.12, 0.10, 0.92]
   )
+
+  // ===========================================================================
+  // TEST CASE 3: APP-CRASH-STYLE VECTOR SEARCH
+  // ===========================================================================
+  // This procedure call searches the same vector index using an app-crash-oriented
+  // query vector.
+  //
+  // The query vector is:
+  //
+  //     [0.12, 0.10, 0.92]
+  //
+  // This vector has a high third dimension:
+  //
+  //     0.92
+  //
+  // That makes it close to app-crash-related demo vectors such as:
+  //
+  //     [0.10, 0.10, 0.95]
+  //     [0.15, 0.10, 0.90]
+  //
+  // So we expect this search to retrieve app-crash-related chunks first.
+
   YIELD node AS dc, score
+
+  // ===========================================================================
+  // CAPTURE APP-CRASH VECTOR SEARCH RESULTS
+  // ===========================================================================
+  // node is renamed to dc because the returned node should be a DocumentChunk.
+  //
+  // score tells us how similar the chunk is to the app-crash-style vector.
+  //
+  // For a healthy lab result, the top chunks should usually be:
+  //
+  //     C-K003-001
+  //     C-K003-002
+
   RETURN
     "App-crash-style cleaned explainable retrieval" AS testName,
     dc,
     score
+
+  // ===========================================================================
+  // RETURN APP-CRASH TEST RESULT TO THE SUBQUERY OUTPUT
+  // ===========================================================================
+  // This final branch also returns:
+  //
+  //     testName
+  //     dc
+  //     score
+  //
+  // Now the outer query can handle all retrieved chunks using one common graph
+  // expansion pipeline.
 }
 
 MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+
+// =============================================================================
+// OUTER STEP 1: EXPAND EACH RETRIEVED CHUNK TO ARTICLE AND ISSUE
+// =============================================================================
+// After the subquery returns retrieved chunks from all three test vectors, this
+// MATCH clause expands each chunk into graph context.
+//
+// The pattern is:
+//
+//     (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+//
+// In plain English:
+//
+//     "For each retrieved DocumentChunk,
+//      find the KnowledgeArticle it belongs to,
+//      then find the Issue solved by that KnowledgeArticle."
+//
+// This is the mandatory explanation path.
+//
+// -----------------------------------------------------------------------------
+// (dc)-[:PART_OF]->(ka:KnowledgeArticle)
+// -----------------------------------------------------------------------------
+// The PART_OF relationship gives source lineage.
+//
+// It tells us:
+//
+//     "This chunk is part of this knowledge article."
+//
+// Example:
+//
+//     (:DocumentChunk {chunkId: "C-K001-001"})
+//       -[:PART_OF]->
+//     (:KnowledgeArticle {articleId: "K001"})
+//
+// -----------------------------------------------------------------------------
+// (ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+// -----------------------------------------------------------------------------
+// The SOLVES relationship gives business meaning.
+//
+// It tells us:
+//
+//     "This article solves this issue."
+//
+// Example:
+//
+//     (:KnowledgeArticle {articleId: "K001"})
+//       -[:SOLVES]->
+//     (:Issue {name: "Login Failure"})
+//
+// -----------------------------------------------------------------------------
+// Why this MATCH is outside the subquery
+// -----------------------------------------------------------------------------
+// This is an important design improvement.
+//
+// Instead of repeating this MATCH after every vector-search branch, we perform it
+// once after all vector results are combined.
+//
+// This makes the query:
+//
+// - shorter
+// - cleaner
+// - easier to maintain
+// - less repetitive
+// - easier for students to understand
+//
+// The subquery handles retrieval.
+// The outer query handles explanation.
+
 OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+
+// =============================================================================
+// OUTER STEP 2: OPTIONALLY FIND TICKETS RELATED TO THE ISSUE
+// =============================================================================
+// OPTIONAL MATCH tries to find extra operational context without removing the
+// main retrieval result if that context is missing.
+//
+// The pattern is:
+//
+//     (t:Ticket)-[:HAS_ISSUE]->(i)
+//
+// In plain English:
+//
+//     "Find tickets that are linked to this Issue."
+//
+// Ticket context is optional because a retrieved chunk/article/issue path is
+// still valid even if no tickets are linked to that issue.
+//
+// If we used MATCH instead of OPTIONAL MATCH, then issues with no tickets would
+// disappear from the output.
+
 OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+
+// =============================================================================
+// OUTER STEP 3: OPTIONALLY FIND CUSTOMERS WHO RAISED RELATED TICKETS
+// =============================================================================
+// This pattern:
+//
+//     (c:Customer)-[:RAISED]->(t)
+//
+// means:
+//
+//     "Find customers who raised the related tickets."
+//
+// This helps explain customer impact.
+//
+// Because this is optional, missing customer context does not remove the
+// retrieval result.
+
 OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+
+// =============================================================================
+// OUTER STEP 4: OPTIONALLY FIND PRODUCTS ASSOCIATED WITH RELATED TICKETS
+// =============================================================================
+// This pattern:
+//
+//     (t)-[:ABOUT]->(p:Product)
+//
+// means:
+//
+//     "Find the product that the ticket is about."
+//
+// Product context helps explain what product area is affected by the issue.
+//
+// For example:
+// - login issues may relate to the mobile app
+// - payment issues may relate to checkout
+// - app crashes may relate to the mobile app
+
 OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+
+// =============================================================================
+// OUTER STEP 5: OPTIONALLY FIND AGENTS ASSIGNED TO RELATED TICKETS
+// =============================================================================
+// This pattern:
+//
+//     (t)-[:ASSIGNED_TO]->(a:Agent)
+//
+// means:
+//
+//     "Find the support agent assigned to the ticket."
+//
+// Agent context helps with:
+//
+// - ownership visibility
+// - escalation
+// - routing
+// - understanding who handled related cases
 
 RETURN
   testName,
@@ -13561,9 +16361,375 @@ RETURN
     ELSE "Related ticket context found"
   END AS operationalContextStatus
 
+// =============================================================================
+// FINAL RETURN: CLEANED EXPLAINABLE RETRIEVAL OUTPUT
+// =============================================================================
+// RETURN defines the final output table.
+//
+// This output combines:
+//
+// - test scenario name
+// - retrieved chunk
+// - vector similarity score
+// - parent article
+// - solved issue
+// - optional ticket context
+// - optional customer context
+// - optional product context
+// - optional agent context
+// - cleaned ticket analytics context
+// - operational context status
+//
+// Because this RETURN uses aggregate functions such as collect() and count(),
+// Neo4j groups rows by all non-aggregated returned values:
+//
+// - testName
+// - chunkId
+// - retrievedChunk
+// - vectorScore
+// - articleId
+// - articleTitle
+// - issueId
+// - issueName
+// - issueSeverity
+//
+// So the result is usually one row per retrieved chunk per test scenario.
+//
+// -----------------------------------------------------------------------------
+// testName
+// -----------------------------------------------------------------------------
+// testName tells us which vector-search scenario produced the row.
+//
+// Example values:
+//
+//     Login-style cleaned explainable retrieval
+//     Payment-style cleaned explainable retrieval
+//     App-crash-style cleaned explainable retrieval
+//
+// This is important because the query combines three test scenarios into one
+// output.
+//
+// -----------------------------------------------------------------------------
+// dc.chunkId AS chunkId
+// -----------------------------------------------------------------------------
+// chunkId identifies the retrieved DocumentChunk.
+//
+// Example:
+//
+//     C-K001-001
+//     C-K002-001
+//     C-K003-001
+//
+// This helps trace exactly which chunk was retrieved.
+//
+// -----------------------------------------------------------------------------
+// dc.text AS retrievedChunk
+// -----------------------------------------------------------------------------
+// retrievedChunk is the actual text content of the returned DocumentChunk.
+//
+// This is the text that could be passed to an LLM as grounding context.
+//
+// -----------------------------------------------------------------------------
+// score AS vectorScore
+// -----------------------------------------------------------------------------
+// vectorScore is the similarity score returned by vector search.
+//
+// We rename score to vectorScore because the query also returns graph analytics
+// scores inside ticketAnalyticsContext.
+//
+// This avoids confusion between:
+//
+// - vector similarity score
+// - full degree score
+// - PageRank score
+// - betweenness score
+//
+// -----------------------------------------------------------------------------
+// ka.articleId AS articleId
+// -----------------------------------------------------------------------------
+// articleId identifies the parent KnowledgeArticle.
+//
+// This gives source traceability.
+//
+// -----------------------------------------------------------------------------
+// ka.title AS articleTitle
+// -----------------------------------------------------------------------------
+// articleTitle gives the readable title of the parent article.
+//
+// This helps humans understand the source article behind the retrieved chunk.
+//
+// -----------------------------------------------------------------------------
+// i.issueId AS issueId
+// -----------------------------------------------------------------------------
+// issueId identifies the Issue node solved by the article.
+//
+// -----------------------------------------------------------------------------
+// i.name AS issueName
+// -----------------------------------------------------------------------------
+// issueName gives the readable name of the business issue.
+//
+// For healthy results, we expect:
+//
+//     Login vector  -> Login Failure
+//     Payment vector -> Payment Failure
+//     App-crash vector -> App Crash
+//
+// -----------------------------------------------------------------------------
+// i.severity AS issueSeverity
+// -----------------------------------------------------------------------------
+// issueSeverity shows how serious or important the issue is.
+//
+// This helps prioritize retrieved results operationally.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT t.ticketId) AS relatedTicketIds
+// -----------------------------------------------------------------------------
+// This collects unique ticket IDs related to the issue.
+//
+// DISTINCT is used because optional matches can multiply rows.
+//
+// For example, one ticket may connect to a customer, product, and agent, which
+// can create duplicate intermediate rows.
+//
+// collect(DISTINCT ...) keeps the final list clean.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT c.name) AS relatedCustomers
+// -----------------------------------------------------------------------------
+// This collects unique customer names who raised related tickets.
+//
+// This helps explain customer impact.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT p.name) AS relatedProducts
+// -----------------------------------------------------------------------------
+// This collects unique product names associated with related tickets.
+//
+// This helps explain product impact.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT a.name) AS assignedAgents
+// -----------------------------------------------------------------------------
+// This collects unique agents assigned to related tickets.
+//
+// This helps explain ownership and routing context.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT CASE WHEN t IS NULL THEN null ELSE {...} END)
+// -----------------------------------------------------------------------------
+// This is the cleaned ticket analytics collection.
+//
+// Because Ticket context comes from OPTIONAL MATCH, t may be null.
+//
+// If no ticket exists, we do not want to create a fake analytics map like:
+//
+//     {
+//       ticketId: null,
+//       priority: null,
+//       status: null,
+//       ...
+//     }
+//
+// That kind of object looks like a ticket but does not represent a real ticket.
+//
+// The CASE expression avoids that confusion:
+//
+//     WHEN t IS NULL THEN null
+//
+// means:
+//
+//     "If there is no related ticket, collect null instead of a fake ticket map."
+//
+// The ELSE branch creates a real analytics map only when a Ticket exists.
+//
+// -----------------------------------------------------------------------------
+// ticketAnalyticsContext
+// -----------------------------------------------------------------------------
+// This field contains ticket-level operational and graph analytics metadata.
+//
+// Each map may include:
+//
+// - ticketId
+// - priority
+// - status
+// - fullDegreeScore
+// - pageRankScore
+// - betweennessScore
+// - louvainCommunityId
+// - labelPropagationCommunityId
+//
+// These values help explain the support-ticket context around the retrieved
+// issue.
+//
+// -----------------------------------------------------------------------------
+// operationalContextStatus
+// -----------------------------------------------------------------------------
+// This field gives a readable summary of whether ticket context exists.
+//
+// The logic is:
+//
+//     CASE
+//       WHEN count(t) = 0 THEN "No related ticket found for this issue"
+//       ELSE "Related ticket context found"
+//     END
+//
+// count(t) counts only non-null Ticket nodes.
+//
+// So if no tickets were found, count(t) is 0.
+//
+// This makes the output easy to understand without manually inspecting the
+// collected ticket lists.
+
 ORDER BY
   testName,
   vectorScore DESC;
+
+// =============================================================================
+// SORT RESULTS BY TEST SCENARIO AND VECTOR SCORE
+// =============================================================================
+// ORDER BY controls how the final combined result is displayed.
+//
+// The sorting logic is:
+//
+//     1. Sort by testName.
+//     2. Within each testName group, sort by vectorScore descending.
+//
+// -----------------------------------------------------------------------------
+// Why sort by testName?
+// -----------------------------------------------------------------------------
+// Sorting by testName groups the three retrieval scenarios together.
+//
+// This makes the output easier to read:
+//
+//     App-crash-style cleaned explainable retrieval
+//       best app-crash match
+//       second app-crash match
+//
+//     Login-style cleaned explainable retrieval
+//       best login match
+//       second login match
+//
+//     Payment-style cleaned explainable retrieval
+//       best payment match
+//       second payment match
+//
+// Depending on alphabetical order, App-crash may appear before Login and Payment.
+//
+// -----------------------------------------------------------------------------
+// Why sort by vectorScore DESC?
+// -----------------------------------------------------------------------------
+// Within each test scenario, the highest-scoring chunk should appear first.
+//
+// This mirrors how retrieval systems usually rank results:
+//
+//     Best semantic match first.
+//
+// =============================================================================
+// EXPECTED HEALTHY RESULT
+// =============================================================================
+// For the login-style vector:
+//
+//     [0.92, 0.12, 0.05]
+//
+// expected chunks should usually include:
+//
+//     C-K001-001
+//     C-K001-002
+//
+// expected article:
+//
+//     K001 - Fix login failure
+//
+// expected issue:
+//
+//     Login Failure
+//
+// -----------------------------------------------------------------------------
+//
+// For the payment-style vector:
+//
+//     [0.08, 0.92, 0.12]
+//
+// expected chunks should usually include:
+//
+//     C-K002-001
+//     C-K002-002
+//
+// expected article:
+//
+//     K002 - Resolve payment failure
+//
+// expected issue:
+//
+//     Payment Failure
+//
+// -----------------------------------------------------------------------------
+//
+// For the app-crash-style vector:
+//
+//     [0.12, 0.10, 0.92]
+//
+// expected chunks should usually include:
+//
+//     C-K003-001
+//     C-K003-002
+//
+// expected article:
+//
+//     K003 - Fix app crash
+//
+// expected issue:
+//
+//     App Crash
+//
+// If these expectations are met, it means:
+//
+// - vector embeddings are topic-aligned
+// - the vector index is working correctly
+// - chunks are connected to parent articles
+// - articles are connected to issues
+// - optional operational context can be collected
+// - ticket analytics context is cleaned and readable
+//
+// =============================================================================
+// FINAL TAKEAWAY
+// =============================================================================
+// This query is a clean, reusable, multi-intent explainable retrieval pattern.
+//
+// The complete flow is:
+//
+//     1. Run login-style vector search.
+//     2. Run payment-style vector search.
+//     3. Run app-crash-style vector search.
+//     4. Combine all retrieved chunks using UNION ALL.
+//     5. Expand each retrieved chunk to its parent article using PART_OF.
+//     6. Expand each article to its solved issue using SOLVES.
+//     7. Optionally collect tickets using HAS_ISSUE.
+//     8. Optionally collect customers using RAISED.
+//     9. Optionally collect products using ABOUT.
+//     10. Optionally collect agents using ASSIGNED_TO.
+//     11. Clean ticket analytics context using CASE.
+//     12. Add operationalContextStatus for readability.
+//     13. Sort results by testName and vectorScore.
+//
+// The most important design improvement is:
+//
+//     Retrieval logic is inside the subquery.
+//     Explanation logic is outside the subquery.
+//
+// This keeps the query modular and avoids repeating the same graph expansion
+// code three times.
+//
+// The key learning point is:
+//
+//     Vector search gives semantic relevance.
+//     Graph traversal gives source and business explanation.
+//     OPTIONAL MATCH gives operational context.
+//     CASE makes optional analytics output cleaner.
+//     UNION ALL lets us compare multiple search intents in one report.
+//
+// This is a strong graph-enhanced RAG pattern because it shows not only what was
+// retrieved, but also why it matters in the business graph.
 ```
 
 ## Day 3 Addendum B — Explainable GraphRAG context query
@@ -13603,17 +16769,198 @@ This confirms that App Crash has knowledge coverage but no operational ticket co
 # Addendum C — Step C1: Final Day 3 knowledge and operational coverage summary
 
 ```cypher
+// =============================================================================
+// FINAL GRAPH + KNOWLEDGE COVERAGE + OPERATIONAL COVERAGE READINESS REPORT
+// =============================================================================
+// This query creates a final validation summary for the Neo4j graph.
+//
+// In simple terms, it answers this question:
+//
+//     "Is my graph ready from the perspective of articles, chunks, embeddings,
+//      relationships, issue coverage, and operational ticket coverage?"
+//
+// This query combines multiple readiness checks into one final report:
+//
+// 1. How many KnowledgeArticle nodes exist?
+// 2. How many DocumentChunk nodes exist?
+// 3. How many chunks have embeddings?
+// 4. What embedding dimensions are present?
+// 5. How many SOLVES relationships exist?
+// 6. How many PART_OF relationships exist?
+// 7. How many Issue nodes exist?
+// 8. How many Issues have knowledge coverage?
+// 9. How many Issues have operational ticket coverage?
+// 10. Which Issues have knowledge articles but no related tickets?
+//
+// This is a strong end-of-lab validation query because it checks not only
+// whether the graph contains data, but also whether that data is connected and
+// useful for both RAG-style retrieval and operational support analysis.
+
 MATCH (ka:KnowledgeArticle)
+
+// =============================================================================
+// STEP 1: COUNT KNOWLEDGE ARTICLE NODES
+// =============================================================================
+// This MATCH finds all KnowledgeArticle nodes in the graph.
+//
+// The pattern:
+//
+//     (ka:KnowledgeArticle)
+//
+// means:
+//
+//     "Find every node labelled KnowledgeArticle and temporarily call each one ka."
+//
+// KnowledgeArticle nodes represent the article-level knowledge base.
+//
+// In this lab, examples may include:
+//
+//     K001 - Fix login failure
+//     K002 - Resolve payment failure
+//     K003 - Fix app crash
+//
+// Counting these nodes confirms whether the article layer exists.
+
 WITH count(ka) AS knowledgeArticleCount
 
+// =============================================================================
+// STORE KNOWLEDGE ARTICLE COUNT
+// =============================================================================
+// WITH stores the number of KnowledgeArticle nodes in:
+//
+//     knowledgeArticleCount
+//
+// This value is carried forward into the next stage of the query.
+//
+// Think of this as a checkpoint:
+//
+//     "Remember the article count, then continue checking the rest of the graph."
+
 MATCH (dc:DocumentChunk)
+
+// =============================================================================
+// STEP 2: COUNT DOCUMENT CHUNKS AND CHECK EMBEDDINGS
+// =============================================================================
+// This MATCH finds all DocumentChunk nodes.
+//
+// The pattern:
+//
+//     (dc:DocumentChunk)
+//
+// means:
+//
+//     "Find every node labelled DocumentChunk and temporarily call each one dc."
+//
+// DocumentChunk nodes represent smaller pieces of article text.
+//
+// In a RAG-style system, chunks are usually the main retrieval units because
+// they are smaller and more focused than full articles.
+//
+// This step prepares us to count:
+// - total chunks
+// - chunks that have embeddings
+// - distinct embedding dimensions
+
 WITH
   knowledgeArticleCount,
   count(dc) AS documentChunkCount,
   count(dc.embedding) AS chunksWithEmbedding,
   collect(DISTINCT size(dc.embedding)) AS embeddingDimensions
 
+// =============================================================================
+// STORE CHUNK AND EMBEDDING READINESS DETAILS
+// =============================================================================
+// This WITH clause carries forward the article count and calculates three new
+// chunk-level readiness values.
+//
+// -----------------------------------------------------------------------------
+// knowledgeArticleCount
+// -----------------------------------------------------------------------------
+// We include knowledgeArticleCount so it remains available later.
+//
+// In Cypher, if a variable is not included in a WITH clause, it is not passed
+// forward to the next part of the query.
+//
+// -----------------------------------------------------------------------------
+// count(dc) AS documentChunkCount
+// -----------------------------------------------------------------------------
+// count(dc) counts all DocumentChunk nodes.
+//
+// This tells us how many chunks exist in total.
+//
+// For this lab, if each of three articles has two chunks, the expected value is:
+//
+//     documentChunkCount = 6
+//
+// -----------------------------------------------------------------------------
+// count(dc.embedding) AS chunksWithEmbedding
+// -----------------------------------------------------------------------------
+// count(dc.embedding) counts only chunks where the embedding property exists and
+// is not null.
+//
+// This is different from count(dc):
+//
+// - count(dc) counts all chunks.
+// - count(dc.embedding) counts only chunks with embeddings.
+//
+// A healthy vector-search setup usually has:
+//
+//     chunksWithEmbedding = documentChunkCount
+//
+// If chunksWithEmbedding is lower, some chunks may not participate in vector
+// similarity search.
+//
+// -----------------------------------------------------------------------------
+// collect(DISTINCT size(dc.embedding)) AS embeddingDimensions
+// -----------------------------------------------------------------------------
+// size(dc.embedding) returns the number of values in each embedding vector.
+//
+// For this lab, embeddings are 3-dimensional demo vectors, so the expected value
+// is:
+//
+//     embeddingDimensions = [3]
+//
+// DISTINCT keeps the output clean.
+//
+// Instead of returning:
+//
+//     [3, 3, 3, 3, 3, 3]
+//
+// it returns:
+//
+//     [3]
+//
+// If multiple dimensions appear, such as [3, 4], that means the graph has
+// inconsistent embedding sizes, which is usually a vector-search data-quality
+// problem.
+
 MATCH (:KnowledgeArticle)-[s:SOLVES]->(:Issue)
+
+// =============================================================================
+// STEP 3: COUNT SOLVES RELATIONSHIPS
+// =============================================================================
+// This MATCH finds all SOLVES relationships from KnowledgeArticle nodes to Issue
+// nodes.
+//
+// The pattern:
+//
+//     (:KnowledgeArticle)-[s:SOLVES]->(:Issue)
+//
+// means:
+//
+//     "Find every relationship where a KnowledgeArticle solves an Issue,
+//      and call that relationship s."
+//
+// The SOLVES relationship gives business meaning to a knowledge article.
+//
+// It answers:
+//
+//     "Which issue does this article solve?"
+//
+// For this lab, if three articles each solve one issue, the expected count is:
+//
+//     solvesRelationshipCount = 3
+
 WITH
   knowledgeArticleCount,
   documentChunkCount,
@@ -13621,7 +16968,55 @@ WITH
   embeddingDimensions,
   count(s) AS solvesRelationshipCount
 
+// =============================================================================
+// STORE SOLVES RELATIONSHIP COUNT
+// =============================================================================
+// This WITH clause carries forward earlier values and stores:
+//
+//     count(s) AS solvesRelationshipCount
+//
+// This confirms whether KnowledgeArticle nodes are connected to Issue nodes.
+//
+// If this count is lower than expected, possible causes include:
+//
+// - SOLVES relationships were not created.
+// - Issue nodes are missing.
+// - KnowledgeArticle.issueType did not match Issue.name.
+// - Relationships were created in the wrong direction.
+// - The query is running against a different database.
+
 MATCH (:DocumentChunk)-[p:PART_OF]->(:KnowledgeArticle)
+
+// =============================================================================
+// STEP 4: COUNT PART_OF RELATIONSHIPS
+// =============================================================================
+// This MATCH finds all PART_OF relationships from DocumentChunk nodes to
+// KnowledgeArticle nodes.
+//
+// The pattern:
+//
+//     (:DocumentChunk)-[p:PART_OF]->(:KnowledgeArticle)
+//
+// means:
+//
+//     "Find every relationship where a DocumentChunk is part of a
+//      KnowledgeArticle, and call that relationship p."
+//
+// The PART_OF relationship gives chunk lineage.
+//
+// It answers:
+//
+//     "Which article did this chunk come from?"
+//
+// This is extremely important in RAG-style systems because vector search may
+// retrieve a chunk, but we still need to trace that chunk back to its parent
+// article.
+//
+// For this lab, if six chunks were loaded and each chunk belongs to one article,
+// the expected count is:
+//
+//     partOfRelationshipCount = 6
+
 WITH
   knowledgeArticleCount,
   documentChunkCount,
@@ -13630,9 +17025,100 @@ WITH
   solvesRelationshipCount,
   count(p) AS partOfRelationshipCount
 
+// =============================================================================
+// STORE PART_OF RELATIONSHIP COUNT
+// =============================================================================
+// This WITH clause carries forward all previous graph readiness metrics and
+// stores:
+//
+//     count(p) AS partOfRelationshipCount
+//
+// A healthy graph usually has:
+//
+//     partOfRelationshipCount = documentChunkCount
+//
+// because every chunk should be connected to one parent article.
+//
+// If partOfRelationshipCount is lower than documentChunkCount, some chunks may
+// be orphaned or disconnected from their parent article.
+
 MATCH (i:Issue)
+
+// =============================================================================
+// STEP 5: MATCH ALL ISSUE NODES
+// =============================================================================
+// This MATCH finds all Issue nodes in the graph.
+//
+// The pattern:
+//
+//     (i:Issue)
+//
+// means:
+//
+//     "Find every node labelled Issue and temporarily call each one i."
+//
+// Issue nodes represent business/support problems such as:
+//
+//     Login Failure
+//     Payment Failure
+//     App Crash
+//
+// Starting from Issue nodes is important because we want an issue-level coverage
+// report.
+//
+// We want to know:
+//
+// - how many issues exist
+// - how many have knowledge articles
+// - how many have tickets
+// - which issues have knowledge coverage but no operational ticket coverage
+
 OPTIONAL MATCH (ka:KnowledgeArticle)-[:SOLVES]->(i)
+
+// =============================================================================
+// STEP 6: OPTIONALLY MATCH KNOWLEDGE ARTICLES THAT SOLVE EACH ISSUE
+// =============================================================================
+// OPTIONAL MATCH tries to find KnowledgeArticle nodes connected to each Issue
+// through the SOLVES relationship.
+//
+// The pattern:
+//
+//     (ka:KnowledgeArticle)-[:SOLVES]->(i)
+//
+// means:
+//
+//     "For the current Issue, find KnowledgeArticles that solve it."
+//
+// OPTIONAL MATCH is used instead of MATCH because we want to keep every Issue in
+// the report, even if no article solves it.
+//
+// This is important for coverage analysis.
+//
+// If an Issue has no KnowledgeArticle, it should still appear in the coverage
+// calculation as an issue with zero knowledge coverage.
+
 OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+
+// =============================================================================
+// STEP 7: OPTIONALLY MATCH TICKETS RELATED TO EACH ISSUE
+// =============================================================================
+// This OPTIONAL MATCH finds Ticket nodes connected to each Issue.
+//
+// The pattern:
+//
+//     (t:Ticket)-[:HAS_ISSUE]->(i)
+//
+// means:
+//
+//     "For the current Issue, find Tickets that have this issue."
+//
+// OPTIONAL MATCH is used because some Issues may not have related tickets.
+//
+// This is useful because we want to calculate operational ticket coverage:
+//
+//     "How many issues are represented in actual ticket data?"
+//
+// If an Issue has no tickets, it should still remain in the coverage report.
 
 WITH
   knowledgeArticleCount,
@@ -13644,6 +17130,52 @@ WITH
   i,
   count(DISTINCT ka) AS articlesForIssue,
   count(DISTINCT t) AS ticketsForIssue
+
+// =============================================================================
+// STEP 8: CALCULATE PER-ISSUE KNOWLEDGE AND TICKET COVERAGE
+// =============================================================================
+// This WITH clause creates one summary row per Issue.
+//
+// It carries forward all previous global readiness metrics and calculates:
+//
+//     articlesForIssue
+//     ticketsForIssue
+//
+// -----------------------------------------------------------------------------
+// i
+// -----------------------------------------------------------------------------
+// We keep the Issue node itself because the next stage needs i.name and also
+// needs to count how many Issue nodes exist.
+//
+// -----------------------------------------------------------------------------
+// count(DISTINCT ka) AS articlesForIssue
+// -----------------------------------------------------------------------------
+// This counts how many distinct KnowledgeArticle nodes solve the current Issue.
+//
+// DISTINCT is important because optional ticket matches can multiply rows.
+//
+// Without DISTINCT, if one Issue has one article and five tickets, the article
+// could appear five times in the intermediate result, causing an inflated count.
+//
+// So this safely answers:
+//
+//     "How many unique articles solve this issue?"
+//
+// If articlesForIssue is greater than 0, the issue has knowledge coverage.
+//
+// -----------------------------------------------------------------------------
+// count(DISTINCT t) AS ticketsForIssue
+// -----------------------------------------------------------------------------
+// This counts how many distinct Ticket nodes are connected to the current Issue.
+//
+// DISTINCT prevents duplicate ticket counting caused by joins or multiple
+// related records.
+//
+// If ticketsForIssue is greater than 0, the issue has operational ticket
+// coverage.
+//
+// This means the issue is not only represented in the knowledge model, but also
+// appears in the operational support data.
 
 WITH
   knowledgeArticleCount,
@@ -13662,6 +17194,99 @@ WITH
     END
   ) AS knowledgeCoveredButNoTicketIssues
 
+// =============================================================================
+// STEP 9: CALCULATE OVERALL ISSUE COVERAGE SUMMARY
+// =============================================================================
+// This WITH clause converts the per-Issue rows into overall summary metrics.
+//
+// -----------------------------------------------------------------------------
+// count(i) AS totalIssueCount
+// -----------------------------------------------------------------------------
+// count(i) counts how many Issue nodes exist in total.
+//
+// This gives the denominator for coverage analysis.
+//
+// For example, if there are three issues:
+//
+//     Login Failure
+//     Payment Failure
+//     App Crash
+//
+// then:
+//
+//     totalIssueCount = 3
+//
+// -----------------------------------------------------------------------------
+// sum(CASE WHEN articlesForIssue > 0 THEN 1 ELSE 0 END)
+// AS issuesWithKnowledgeCoverage
+// -----------------------------------------------------------------------------
+// This counts how many Issues have at least one KnowledgeArticle linked through
+// SOLVES.
+//
+// The CASE expression works like this:
+//
+//     If articlesForIssue > 0:
+//       return 1
+//
+//     Otherwise:
+//       return 0
+//
+// Then sum(...) adds those 1s and 0s across all Issues.
+//
+// In simple terms:
+//
+//     "Count Issues that have knowledge article coverage."
+//
+// Example:
+//
+//     Login Failure    -> 1 article  -> counted
+//     Payment Failure  -> 1 article  -> counted
+//     Refund Delay     -> 0 articles -> not counted
+//
+// -----------------------------------------------------------------------------
+// sum(CASE WHEN ticketsForIssue > 0 THEN 1 ELSE 0 END)
+// AS issuesWithOperationalTicketCoverage
+// -----------------------------------------------------------------------------
+// This counts how many Issues have at least one related Ticket.
+//
+// In simple terms:
+//
+//     "Count Issues that appear in operational ticket data."
+//
+// This is useful because an Issue may exist in the knowledge graph, but may not
+// currently have any support tickets connected to it.
+//
+// That can mean:
+//
+// - the issue has not occurred in ticket data yet
+// - ticket ingestion has not loaded those tickets
+// - HAS_ISSUE relationships are missing
+// - the issue is theoretical/sample-only
+//
+// -----------------------------------------------------------------------------
+// collect(CASE WHEN articlesForIssue > 0 AND ticketsForIssue = 0 THEN i.name ...)
+// AS knowledgeCoveredButNoTicketIssues
+// -----------------------------------------------------------------------------
+// This collects Issue names where:
+//
+//     articlesForIssue > 0
+//     ticketsForIssue = 0
+//
+// In plain English:
+//
+//     "The issue has knowledge coverage, but no operational ticket coverage."
+//
+// This is a useful gap-analysis list.
+//
+// It tells us:
+//
+//     "We have an article for this issue, but no related tickets currently exist
+//      in the operational graph."
+//
+// The ELSE null branch means Issues that do not match this condition produce
+// null values, which are filtered out in the final RETURN using a list
+// comprehension.
+
 RETURN
   knowledgeArticleCount,
   documentChunkCount,
@@ -13673,4 +17298,173 @@ RETURN
   issuesWithKnowledgeCoverage,
   issuesWithOperationalTicketCoverage,
   [issueName IN knowledgeCoveredButNoTicketIssues WHERE issueName IS NOT NULL] AS knowledgeCoveredButNoTicketIssues;
+
+// =============================================================================
+// FINAL RETURN: GRAPH READINESS + COVERAGE SUMMARY
+// =============================================================================
+// RETURN outputs one final summary row containing graph readiness and coverage
+// metrics.
+//
+// -----------------------------------------------------------------------------
+// knowledgeArticleCount
+// -----------------------------------------------------------------------------
+// Total number of KnowledgeArticle nodes.
+//
+// This confirms the article layer exists.
+//
+// -----------------------------------------------------------------------------
+// documentChunkCount
+// -----------------------------------------------------------------------------
+// Total number of DocumentChunk nodes.
+//
+// This confirms the chunk layer exists.
+//
+// -----------------------------------------------------------------------------
+// chunksWithEmbedding
+// -----------------------------------------------------------------------------
+// Number of chunks that have embeddings.
+//
+// A healthy vector-search setup usually has:
+//
+//     chunksWithEmbedding = documentChunkCount
+//
+// -----------------------------------------------------------------------------
+// embeddingDimensions
+// -----------------------------------------------------------------------------
+// Distinct embedding dimensions found across chunks.
+//
+// For this lab, the expected value is usually:
+//
+//     [3]
+//
+// This confirms embedding dimension consistency.
+//
+// -----------------------------------------------------------------------------
+// solvesRelationshipCount
+// -----------------------------------------------------------------------------
+// Number of KnowledgeArticle -[:SOLVES]-> Issue relationships.
+//
+// This confirms article-to-issue business context exists.
+//
+// -----------------------------------------------------------------------------
+// partOfRelationshipCount
+// -----------------------------------------------------------------------------
+// Number of DocumentChunk -[:PART_OF]-> KnowledgeArticle relationships.
+//
+// This confirms chunk-to-article lineage exists.
+//
+// -----------------------------------------------------------------------------
+// totalIssueCount
+// -----------------------------------------------------------------------------
+// Total number of Issue nodes.
+//
+// This tells us how many issue categories exist in the graph.
+//
+// -----------------------------------------------------------------------------
+// issuesWithKnowledgeCoverage
+// -----------------------------------------------------------------------------
+// Number of Issues that have at least one KnowledgeArticle linked through SOLVES.
+//
+// This answers:
+//
+//     "How many Issues are covered by knowledge articles?"
+//
+// -----------------------------------------------------------------------------
+// issuesWithOperationalTicketCoverage
+// -----------------------------------------------------------------------------
+// Number of Issues that have at least one related Ticket through HAS_ISSUE.
+//
+// This answers:
+//
+//     "How many Issues are represented in ticket data?"
+//
+// -----------------------------------------------------------------------------
+// [issueName IN knowledgeCoveredButNoTicketIssues WHERE issueName IS NOT NULL]
+// AS knowledgeCoveredButNoTicketIssues
+// -----------------------------------------------------------------------------
+// This list comprehension removes null values from the collected issue list.
+//
+// Earlier, the query collected either:
+//
+//     i.name
+//
+// or:
+//
+//     null
+//
+// depending on whether the issue had knowledge coverage but no ticket coverage.
+//
+// This final expression keeps only real issue names.
+//
+// The result is a clean list such as:
+//
+//     ["App Crash"]
+//
+// instead of:
+//
+//     [null, null, "App Crash"]
+//
+// This final list is useful because it identifies Issues that have knowledge
+// articles but no operational ticket evidence.
+//
+// =============================================================================
+// EXPECTED INTERPRETATION
+// =============================================================================
+// A healthy result might conceptually look like:
+//
+//     knowledgeArticleCount                  = 3
+//     documentChunkCount                     = 6
+//     chunksWithEmbedding                    = 6
+//     embeddingDimensions                    = [3]
+//     solvesRelationshipCount                = 3
+//     partOfRelationshipCount                = 6
+//     totalIssueCount                        = 3
+//     issuesWithKnowledgeCoverage            = 3
+//     issuesWithOperationalTicketCoverage    = 2
+//     knowledgeCoveredButNoTicketIssues      = ["App Crash"]
+//
+// This would mean:
+//
+// - The graph has articles, chunks, embeddings, and relationships.
+// - All issues have knowledge article coverage.
+// - Only two issues currently have operational ticket coverage.
+// - App Crash has a knowledge article but no related ticket data.
+//
+// That is not necessarily bad.
+// It simply tells us there is a difference between the knowledge coverage layer
+// and the operational ticket coverage layer.
+//
+// =============================================================================
+// FINAL TAKEAWAY
+// =============================================================================
+// This query is a final graph readiness and coverage summary query.
+//
+// It validates:
+//
+//     1. KnowledgeArticle count
+//     2. DocumentChunk count
+//     3. Embedding coverage
+//     4. Embedding dimension consistency
+//     5. SOLVES relationship count
+//     6. PART_OF relationship count
+//     7. Issue count
+//     8. Issue knowledge coverage
+//     9. Issue ticket coverage
+//     10. Issues that have knowledge coverage but no ticket coverage
+//
+// The most important learning point is:
+//
+//     A RAG-ready graph is not only about embeddings.
+//     It also needs relationships, coverage, traceability, and operational context.
+//
+// This query proves whether the graph is ready from both:
+//
+//     Knowledge perspective:
+//       articles, chunks, embeddings, SOLVES, PART_OF
+//
+//     Operational perspective:
+//       issues, tickets, ticket coverage gaps
+//
+//
+// In Neo4j Browser or Cypher Shell, use the real Cypher symbols.
 ```
