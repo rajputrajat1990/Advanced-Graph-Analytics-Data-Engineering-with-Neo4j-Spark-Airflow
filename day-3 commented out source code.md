@@ -1,4 +1,4 @@
-Step 1 — Verify current node counts before adding knowledge data
+# Step 1 — Verify current node counts before adding knowledge data
 
 ```cypher
 // =============================================================================
