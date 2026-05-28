@@ -1,4 +1,3 @@
-
 # Objective
 
 To build the **SupportGraph Intelligence Platform** project for the 15-day programme. The stack includes **Neo4j, Apache Spark, Apache Airflow, NeoDash, Neo4j Bloom, Power BI, Oracle/PostgreSQL-style ingestion, FastAPI, and Graph RAG/LLM integration**, as described in the TOC.
@@ -3340,307 +3339,1020 @@ The key production lesson of Day 4 is:
 
 A GraphRAG system is not complete when a Cypher query works in the database. It becomes application-ready when the retrieval logic is exposed through a stable, validated, explainable API response.
 
-## Day 4 — Build an API-ready GraphRAG Retrieval Service
+## Day 4 — Graph RAG Retrieval Pipeline
 
-### Step 1 — Define the API response contract before coding
+# Step 1 — Re-run the final Day 3 explainable retrieval query as the Day 4 baseline
 
-In Day 3, we successfully built an explainable GraphRAG query inside Neo4j. That query was able to:
+```cypher
+CALL {
+  CALL db.index.vector.queryNodes(
+    'documentChunk_embedding_vector',
+    2,
+    [0.92, 0.12, 0.05]
+  )
+  YIELD node AS dc, score
+  RETURN
+    "Login-style cleaned explainable retrieval" AS testName,
+    dc,
+    score
 
-- retrieve relevant `DocumentChunk` nodes using vector search,
-- connect each chunk to its parent `KnowledgeArticle`,
-- connect the article to the `Issue` it solves,
-- expand into operational support context such as `Ticket`, `Customer`, `Product`, and `Agent`,
-- include Day 2 graph analytics properties,
-- handle missing ticket context cleanly for `App Crash`.
+  UNION ALL
 
-In Day 4, we will convert that database-level retrieval workflow into an API-ready backend service.
+  CALL db.index.vector.queryNodes(
+    'documentChunk_embedding_vector',
+    2,
+    [0.08, 0.92, 0.12]
+  )
+  YIELD node AS dc, score
+  RETURN
+    "Payment-style cleaned explainable retrieval" AS testName,
+    dc,
+    score
 
-Before writing code, we first define the API response contract.
+  UNION ALL
 
-This is a production-level habit. In real projects, API development should not begin by randomly writing endpoint code. The team should first agree on:
-
-- what the endpoint will be called,
-- what input it accepts,
-- what output it returns,
-- how success is represented,
-- how warnings are represented,
-- how missing graph context is represented,
-- how downstream systems such as dashboards, frontends, or LLM prompts will consume the response.
-
-The official FastAPI documentation explains that a FastAPI application is created from a `FastAPI` app instance, that route decorators such as `@app.get("/")` define path operations, and that a Python dictionary returned from a path operation function is automatically converted to JSON. It also explains that FastAPI automatically generates OpenAPI schema and interactive API documentation for the application. This makes response design an important part of API development, not an afterthought.
-
-Reference: FastAPI First Steps — https://fastapi.tiangolo.com/tutorial/first-steps/
-
----
-
-### Proposed endpoint for controlled retrieval testing
-
-For Day 4, we will start with a controlled test endpoint:
-
-```text
-GET /retrieval/test/{query_type}
-```
-
-### Supported query_type values:
-
-login
-payment
-app_crash
-
-### These values map to the controlled learning vectors used during Day 3:
-
-login     -> [0.92, 0.12, 0.05]
-payment   -> [0.08, 0.92, 0.12]
-app_crash -> [0.12, 0.10, 0.92]
-
-This keeps Day 4 deterministic and easy to validate.
-
-In a later step, we can add support for raw query vectors or real embedding-model-generated vectors.
-
-### Expected response structure
-
-The API should return a clean JSON response with the following top-level structure:
-
-```json
-{
-  "queryType": "login",
-  "retrievalMode": "controlled_test_vector",
-  "topK": 2,
-  "retrievalStatus": "success",
-  "summary": {
-    "resultCount": 2,
-    "hasOperationalContext": true,
-    "warnings": []
-  },
-  "results": []
+  CALL db.index.vector.queryNodes(
+    'documentChunk_embedding_vector',
+    2,
+    [0.12, 0.10, 0.92]
+  )
+  YIELD node AS dc, score
+  RETURN
+    "App-crash-style cleaned explainable retrieval" AS testName,
+    dc,
+    score
 }
+MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+
+RETURN
+  testName,
+  dc.chunkId AS chunkId,
+  dc.text AS retrievedChunk,
+  score AS vectorScore,
+
+  ka.articleId AS articleId,
+  ka.title AS articleTitle,
+
+  i.issueId AS issueId,
+  i.name AS issueName,
+  i.severity AS issueSeverity,
+
+  collect(DISTINCT t.ticketId) AS relatedTicketIds,
+  collect(DISTINCT c.name) AS relatedCustomers,
+  collect(DISTINCT p.name) AS relatedProducts,
+  collect(DISTINCT a.name) AS assignedAgents,
+
+  collect(DISTINCT
+    CASE
+      WHEN t IS NULL THEN null
+      ELSE {
+        ticketId: t.ticketId,
+        priority: t.priority,
+        status: t.status,
+        fullDegreeScore: t.fullDegreeScore,
+        pageRankScore: t.pageRankScore,
+        betweennessScore: t.betweennessScore,
+        louvainCommunityId: t.louvainCommunityId,
+        labelPropagationCommunityId: t.labelPropagationCommunityId
+      }
+    END
+  ) AS ticketAnalyticsContext,
+
+  CASE
+    WHEN count(t) = 0 THEN "No related ticket found for this issue"
+    ELSE "Related ticket context found"
+  END AS operationalContextStatus
+
+ORDER BY
+  testName,
+  vectorScore DESC;
 ```
 
-The response should separate the result into clear sections:
+# Step 2 — Add a controlled natural-language question for Login Failure
 
-- `chunk`
-- `article`
-- `issue`
-- `operationalContext`
-- `analyticsContext`
+```cypher
+WITH
+  "Why can't customers log in?" AS userQuestion,
+  "login" AS queryType,
+  [0.92, 0.12, 0.05] AS queryVector,
+  2 AS topK
 
-This structure makes the response easier to consume by dashboards, applications, and future LLM prompts.
+CALL db.index.vector.queryNodes(
+  'documentChunk_embedding_vector',
+  topK,
+  queryVector
+)
+YIELD node AS dc, score
 
-### Example response for Login Failure
+MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
 
-```json
-{
-  "queryType": "login",
-  "retrievalMode": "controlled_test_vector",
-  "topK": 2,
-  "retrievalStatus": "success",
-  "summary": {
-    "resultCount": 2,
-    "hasOperationalContext": true,
-    "warnings": []
+RETURN
+  userQuestion,
+  queryType,
+  queryVector,
+  topK,
+
+  dc.chunkId AS chunkId,
+  dc.text AS retrievedChunk,
+  score AS vectorScore,
+
+  ka.articleId AS articleId,
+  ka.title AS articleTitle,
+
+  i.issueId AS issueId,
+  i.name AS issueName,
+  i.severity AS issueSeverity,
+
+  collect(DISTINCT t.ticketId) AS relatedTicketIds,
+  collect(DISTINCT c.name) AS relatedCustomers,
+  collect(DISTINCT p.name) AS relatedProducts,
+  collect(DISTINCT a.name) AS assignedAgents,
+
+  collect(DISTINCT
+    CASE
+      WHEN t IS NULL THEN null
+      ELSE {
+        ticketId: t.ticketId,
+        priority: t.priority,
+        status: t.status,
+        fullDegreeScore: t.fullDegreeScore,
+        pageRankScore: t.pageRankScore,
+        betweennessScore: t.betweennessScore,
+        louvainCommunityId: t.louvainCommunityId,
+        labelPropagationCommunityId: t.labelPropagationCommunityId
+      }
+    END
+  ) AS ticketAnalyticsContext,
+
+  CASE
+    WHEN count(t) = 0 THEN "No related ticket found for this issue"
+    ELSE "Related ticket context found"
+  END AS operationalContextStatus
+
+ORDER BY
+  vectorScore DESC;
+```
+
+# Step 3 — Add controlled questions for all three retrieval scenarios
+
+```cypher
+UNWIND [
+  {
+    queryType: "login",
+    userQuestion: "Why can't customers log in?",
+    queryVector: [0.92, 0.12, 0.05],
+    topK: 2
   },
-  "results": [
-    {
-      "chunk": {
-        "chunkId": "C-K001-001",
-        "text": "If a customer cannot sign in, ask them to reset the password and verify OTP delivery.",
-        "vectorScore": 0.9998319745063782
-      },
-      "article": {
-        "articleId": "K001",
-        "title": "Fix login failure"
-      },
-      "issue": {
-        "issueId": "I001",
-        "name": "Login Failure",
-        "severity": "High"
-      },
-      "operationalContext": {
-        "status": "Related ticket context found",
-        "ticketIds": ["T001"],
-        "customers": ["Asha Sharma"],
-        "products": ["Mobile App"],
-        "assignedAgents": ["Rajat Support"]
-      },
-      "analyticsContext": [
-        {
-          "ticketId": "T001",
-          "priority": "High",
-          "status": "Open",
-          "fullDegreeScore": 4.0,
-          "pageRankScore": 0.2775,
-          "betweennessScore": 3.0,
-          "louvainCommunityId": 1,
-          "labelPropagationCommunityId": 1
-        }
-      ]
+  {
+    queryType: "payment",
+    userQuestion: "Why are payments failing?",
+    queryVector: [0.08, 0.92, 0.12],
+    topK: 2
+  },
+  {
+    queryType: "app_crash",
+    userQuestion: "Why does the app crash?",
+    queryVector: [0.12, 0.10, 0.92],
+    topK: 2
+  }
+] AS request
+
+CALL db.index.vector.queryNodes(
+  'documentChunk_embedding_vector',
+  request.topK,
+  request.queryVector
+)
+YIELD node AS dc, score
+
+MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+
+RETURN
+  request.queryType AS queryType,
+  request.userQuestion AS userQuestion,
+  request.queryVector AS queryVector,
+  request.topK AS topK,
+
+  dc.chunkId AS chunkId,
+  dc.text AS retrievedChunk,
+  score AS vectorScore,
+
+  ka.articleId AS articleId,
+  ka.title AS articleTitle,
+
+  i.issueId AS issueId,
+  i.name AS issueName,
+  i.severity AS issueSeverity,
+
+  collect(DISTINCT t.ticketId) AS relatedTicketIds,
+  collect(DISTINCT c.name) AS relatedCustomers,
+  collect(DISTINCT p.name) AS relatedProducts,
+  collect(DISTINCT a.name) AS assignedAgents,
+
+  collect(DISTINCT
+    CASE
+      WHEN t IS NULL THEN null
+      ELSE {
+        ticketId: t.ticketId,
+        priority: t.priority,
+        status: t.status,
+        fullDegreeScore: t.fullDegreeScore,
+        pageRankScore: t.pageRankScore,
+        betweennessScore: t.betweennessScore,
+        louvainCommunityId: t.louvainCommunityId,
+        labelPropagationCommunityId: t.labelPropagationCommunityId
+      }
+    END
+  ) AS ticketAnalyticsContext,
+
+  CASE
+    WHEN count(t) = 0 THEN "No related ticket found for this issue"
+    ELSE "Related ticket context found"
+  END AS operationalContextStatus
+
+ORDER BY
+  queryType,
+  vectorScore DESC;
+```
+
+# Step 4 — Add a GDS-aware retrieval ranking score
+
+```cypher
+UNWIND [
+  {
+    queryType: "login",
+    userQuestion: "Why can't customers log in?",
+    queryVector: [0.92, 0.12, 0.05],
+    topK: 2
+  },
+  {
+    queryType: "payment",
+    userQuestion: "Why are payments failing?",
+    queryVector: [0.08, 0.92, 0.12],
+    topK: 2
+  },
+  {
+    queryType: "app_crash",
+    userQuestion: "Why does the app crash?",
+    queryVector: [0.12, 0.10, 0.92],
+    topK: 2
+  }
+] AS request
+
+CALL db.index.vector.queryNodes(
+  'documentChunk_embedding_vector',
+  request.topK,
+  request.queryVector
+)
+YIELD node AS dc, score
+
+MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+
+WITH
+  request,
+  dc,
+  score,
+  ka,
+  i,
+  collect(DISTINCT t.ticketId) AS relatedTicketIds,
+  collect(DISTINCT c.name) AS relatedCustomers,
+  collect(DISTINCT p.name) AS relatedProducts,
+  collect(DISTINCT a.name) AS assignedAgents,
+  collect(DISTINCT
+    CASE
+      WHEN t IS NULL THEN null
+      ELSE {
+        ticketId: t.ticketId,
+        priority: t.priority,
+        status: t.status,
+        fullDegreeScore: t.fullDegreeScore,
+        pageRankScore: t.pageRankScore,
+        betweennessScore: t.betweennessScore,
+        louvainCommunityId: t.louvainCommunityId,
+        labelPropagationCommunityId: t.labelPropagationCommunityId
+      }
+    END
+  ) AS ticketAnalyticsContext,
+  count(t) AS ticketCount,
+  max(t.pageRankScore) AS maxPageRankScore,
+  max(t.fullDegreeScore) AS maxFullDegreeScore,
+  max(t.betweennessScore) AS maxBetweennessScore
+
+WITH
+  request,
+  dc,
+  score,
+  ka,
+  i,
+  relatedTicketIds,
+  relatedCustomers,
+  relatedProducts,
+  assignedAgents,
+  ticketAnalyticsContext,
+  ticketCount,
+  coalesce(maxPageRankScore, 0.0) AS pageRankBoost,
+  coalesce(maxFullDegreeScore, 0.0) * 0.01 AS degreeBoost,
+  coalesce(maxBetweennessScore, 0.0) * 0.01 AS betweennessBoost
+
+RETURN
+  request.queryType AS queryType,
+  request.userQuestion AS userQuestion,
+
+  dc.chunkId AS chunkId,
+  dc.text AS retrievedChunk,
+  score AS vectorScore,
+
+  pageRankBoost,
+  degreeBoost,
+  betweennessBoost,
+
+  score + pageRankBoost + degreeBoost + betweennessBoost AS retrievalRankScore,
+
+  ka.articleId AS articleId,
+  ka.title AS articleTitle,
+
+  i.issueId AS issueId,
+  i.name AS issueName,
+  i.severity AS issueSeverity,
+
+  relatedTicketIds,
+  relatedCustomers,
+  relatedProducts,
+  assignedAgents,
+  ticketAnalyticsContext,
+
+  CASE
+    WHEN ticketCount = 0 THEN "No related ticket found for this issue"
+    ELSE "Related ticket context found"
+  END AS operationalContextStatus
+
+ORDER BY
+  queryType,
+  retrievalRankScore DESC,
+  vectorScore DESC;
+```
+
+# Step 5 — Assemble retrieved results into grouped subgraph context
+
+```cypher
+UNWIND [
+  {
+    queryType: "login",
+    userQuestion: "Why can't customers log in?",
+    queryVector: [0.92, 0.12, 0.05],
+    topK: 2
+  },
+  {
+    queryType: "payment",
+    userQuestion: "Why are payments failing?",
+    queryVector: [0.08, 0.92, 0.12],
+    topK: 2
+  },
+  {
+    queryType: "app_crash",
+    userQuestion: "Why does the app crash?",
+    queryVector: [0.12, 0.10, 0.92],
+    topK: 2
+  }
+] AS request
+
+CALL db.index.vector.queryNodes(
+  'documentChunk_embedding_vector',
+  request.topK,
+  request.queryVector
+)
+YIELD node AS dc, score
+
+MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+
+WITH
+  request,
+  dc,
+  score,
+  ka,
+  i,
+  collect(DISTINCT t.ticketId) AS relatedTicketIds,
+  collect(DISTINCT c.name) AS relatedCustomers,
+  collect(DISTINCT p.name) AS relatedProducts,
+  collect(DISTINCT a.name) AS assignedAgents,
+  collect(DISTINCT
+    CASE
+      WHEN t IS NULL THEN null
+      ELSE {
+        ticketId: t.ticketId,
+        priority: t.priority,
+        status: t.status,
+        fullDegreeScore: t.fullDegreeScore,
+        pageRankScore: t.pageRankScore,
+        betweennessScore: t.betweennessScore,
+        louvainCommunityId: t.louvainCommunityId,
+        labelPropagationCommunityId: t.labelPropagationCommunityId
+      }
+    END
+  ) AS ticketAnalyticsContext,
+  count(t) AS ticketCount,
+  coalesce(max(t.pageRankScore), 0.0) AS pageRankBoost,
+  coalesce(max(t.fullDegreeScore), 0.0) * 0.01 AS degreeBoost,
+  coalesce(max(t.betweennessScore), 0.0) * 0.01 AS betweennessBoost
+
+WITH
+  request,
+  dc,
+  score,
+  ka,
+  i,
+  relatedTicketIds,
+  relatedCustomers,
+  relatedProducts,
+  assignedAgents,
+  ticketAnalyticsContext,
+  ticketCount,
+  pageRankBoost,
+  degreeBoost,
+  betweennessBoost,
+  score + pageRankBoost + degreeBoost + betweennessBoost AS retrievalRankScore
+
+WITH
+  request,
+  collect({
+    chunkId: dc.chunkId,
+    text: dc.text,
+    vectorScore: score,
+    pageRankBoost: pageRankBoost,
+    degreeBoost: degreeBoost,
+    betweennessBoost: betweennessBoost,
+    retrievalRankScore: retrievalRankScore,
+    article: {
+      articleId: ka.articleId,
+      title: ka.title
+    },
+    issue: {
+      issueId: i.issueId,
+      name: i.name,
+      severity: i.severity
+    },
+    operationalContext: {
+      status: CASE
+        WHEN ticketCount = 0 THEN "No related ticket found for this issue"
+        ELSE "Related ticket context found"
+      END,
+      ticketIds: relatedTicketIds,
+      customers: relatedCustomers,
+      products: relatedProducts,
+      assignedAgents: assignedAgents
+    },
+    analyticsContext: ticketAnalyticsContext
+  }) AS retrievedContext
+
+RETURN
+  request.queryType AS queryType,
+  request.userQuestion AS userQuestion,
+  request.topK AS top
+```
+
+> this output means Step 5 is not validated yet.
+
+
+> You got 3 rows, which is the right number of grouped questions, but the output only shows:
+> 
+> queryType
+> userQuestion
+> top
+
+
+> Expected Step 5 output should include at least:
+> 
+> queryType
+> userQuestion
+> topK
+> retrievedContext
+> retrievedContextCount
+
+> So we need to run a smaller, diagnostic version of Step 5. This is production-grade troubleshooting: instead of assuming the large nested output worked, we validate the assembled context with a compact result.
+
+# Step 5 Retry — Validate grouped subgraph context assembly
+
+```cypher
+UNWIND [
+  {
+    queryType: "login",
+    userQuestion: "Why can't customers log in?",
+    queryVector: [0.92, 0.12, 0.05],
+    topK: 2
+  },
+  {
+    queryType: "payment",
+    userQuestion: "Why are payments failing?",
+    queryVector: [0.08, 0.92, 0.12],
+    topK: 2
+  },
+  {
+    queryType: "app_crash",
+    userQuestion: "Why does the app crash?",
+    queryVector: [0.12, 0.10, 0.92],
+    topK: 2
+  }
+] AS request
+
+CALL db.index.vector.queryNodes(
+  'documentChunk_embedding_vector',
+  request.topK,
+  request.queryVector
+)
+YIELD node AS dc, score
+
+MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+
+WITH
+  request,
+  dc,
+  score,
+  ka,
+  i,
+  collect(DISTINCT t.ticketId) AS relatedTicketIds,
+  collect(DISTINCT c.name) AS relatedCustomers,
+  collect(DISTINCT p.name) AS relatedProducts,
+  collect(DISTINCT a.name) AS assignedAgents,
+  count(t) AS ticketCount,
+  coalesce(max(t.pageRankScore), 0.0) AS pageRankBoost,
+  coalesce(max(t.fullDegreeScore), 0.0) * 0.01 AS degreeBoost,
+  coalesce(max(t.betweennessScore), 0.0) * 0.01 AS betweennessBoost
+
+WITH
+  request,
+  {
+    chunkId: dc.chunkId,
+    articleId: ka.articleId,
+    issueName: i.name,
+    vectorScore: score,
+    retrievalRankScore: score + pageRankBoost + degreeBoost + betweennessBoost,
+    ticketIds: relatedTicketIds,
+    customers: relatedCustomers,
+    products: relatedProducts,
+    assignedAgents: assignedAgents,
+    operationalStatus: CASE
+      WHEN ticketCount = 0 THEN "No related ticket found for this issue"
+      ELSE "Related ticket context found"
+    END
+  } AS contextItem
+
+WITH
+  request,
+  collect(contextItem) AS retrievedContext
+
+RETURN
+  request.queryType AS queryType,
+  request.userQuestion AS userQuestion,
+  request.topK AS topK,
+  size(retrievedContext) AS retrievedContextCount,
+  [item IN retrievedContext | item.chunkId] AS retrievedChunkIds,
+  [item IN retrievedContext | item.issueName] AS retrievedIssueNames,
+  [item IN retrievedContext | item.ticketIds] AS retrievedTicketIds,
+  [item IN retrievedContext | item.operationalStatus] AS operationalStatuses,
+  [item IN retrievedContext | item.retrievalRankScore] AS retrievalRankScores
+
+ORDER BY
+  queryType;
+```
+
+# Step 6 — Format grouped context as LLM-ready context
+
+```cypher
+UNWIND [
+  {
+    queryType: "login",
+    userQuestion: "Why can't customers log in?",
+    queryVector: [0.92, 0.12, 0.05],
+    topK: 2
+  },
+  {
+    queryType: "payment",
+    userQuestion: "Why are payments failing?",
+    queryVector: [0.08, 0.92, 0.12],
+    topK: 2
+  },
+  {
+    queryType: "app_crash",
+    userQuestion: "Why does the app crash?",
+    queryVector: [0.12, 0.10, 0.92],
+    topK: 2
+  }
+] AS request
+
+CALL db.index.vector.queryNodes(
+  'documentChunk_embedding_vector',
+  request.topK,
+  request.queryVector
+)
+YIELD node AS dc, score
+
+MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+
+WITH
+  request,
+  dc,
+  score,
+  ka,
+  i,
+  collect(DISTINCT t.ticketId) AS relatedTicketIds,
+  collect(DISTINCT c.name) AS relatedCustomers,
+  collect(DISTINCT p.name) AS relatedProducts,
+  collect(DISTINCT a.name) AS assignedAgents,
+  count(t) AS ticketCount,
+  coalesce(max(t.pageRankScore), 0.0) AS pageRankBoost,
+  coalesce(max(t.fullDegreeScore), 0.0) * 0.01 AS degreeBoost,
+  coalesce(max(t.betweennessScore), 0.0) * 0.01 AS betweennessBoost
+
+WITH
+  request,
+  {
+    chunkId: dc.chunkId,
+    text: dc.text,
+    vectorScore: score,
+    retrievalRankScore: score + pageRankBoost + degreeBoost + betweennessBoost,
+    article: {
+      articleId: ka.articleId,
+      title: ka.title
+    },
+    issue: {
+      issueId: i.issueId,
+      name: i.name,
+      severity: i.severity
+    },
+    operationalContext: {
+      status: CASE
+        WHEN ticketCount = 0 THEN "No related ticket found for this issue"
+        ELSE "Related ticket context found"
+      END,
+      ticketIds: relatedTicketIds,
+      customers: relatedCustomers,
+      products: relatedProducts,
+      assignedAgents: assignedAgents
+    },
+    rankingSignals: {
+      vectorScore: score,
+      pageRankBoost: pageRankBoost,
+      degreeBoost: degreeBoost,
+      betweennessBoost: betweennessBoost,
+      retrievalRankScore: score + pageRankBoost + degreeBoost + betweennessBoost
     }
-  ]
-}
+  } AS contextItem
+
+WITH
+  request,
+  collect(contextItem) AS retrievedContext
+
+WITH
+  request,
+  retrievedContext,
+  [item IN retrievedContext | {
+    chunkId: item.chunkId,
+    text: item.text,
+    vectorScore: item.vectorScore,
+    retrievalRankScore: item.retrievalRankScore
+  }] AS retrievedEvidence,
+  [item IN retrievedContext | item.issue] AS issueContext,
+  [item IN retrievedContext | item.operationalContext] AS operationalContext,
+  [item IN retrievedContext | item.rankingSignals] AS rankingSignals,
+  [item IN retrievedContext
+    WHERE item.operationalContext.status = "No related ticket found for this issue"
+    | item.operationalContext.status
+  ] AS warnings
+
+RETURN
+  request.queryType AS queryType,
+  request.userQuestion AS userQuestion,
+  {
+    question: request.userQuestion,
+    retrievedEvidence: retrievedEvidence,
+    issueContext: issueContext,
+    operationalContext: operationalContext,
+    rankingSignals: rankingSignals,
+    warnings: warnings,
+    instructionForDay5LLM: "Use only the provided retrieved evidence and graph context. If warnings exist, mention the data-quality limitation."
+  } AS llmReadyContext,
+  size(retrievedContext) AS retrievedContextCount,
+  size(warnings) AS warningCount
+
+ORDER BY
+  queryType;
 ```
 
-### Example response for Payment Failure
+# Step 6B — Deduplicate repeated LLM-ready context fields
 
-```json
-{
-  "queryType": "payment",
-  "retrievalMode": "controlled_test_vector",
-  "topK": 2,
-  "retrievalStatus": "success",
-  "summary": {
-    "resultCount": 2,
-    "hasOperationalContext": true,
-    "warnings": []
+```cypher
+UNWIND [
+  {
+    queryType: "login",
+    userQuestion: "Why can't customers log in?",
+    queryVector: [0.92, 0.12, 0.05],
+    topK: 2
   },
-  "results": [
-    {
-      "chunk": {
-        "chunkId": "C-K002-001",
-        "text": "If payment fails during checkout, check card status and verify available balance.",
-        "vectorScore": 0.9995620250701904
-      },
-      "article": {
-        "articleId": "K002",
-        "title": "Resolve payment failure"
-      },
-      "issue": {
-        "issueId": "I002",
-        "name": "Payment Failure",
-        "severity": "Medium"
-      },
-      "operationalContext": {
-        "status": "Related ticket context found",
-        "ticketIds": ["T002"],
-        "customers": ["Ravi Mehta"],
-        "products": ["Payment Gateway"],
-        "assignedAgents": ["Rajat Support"]
-      },
-      "analyticsContext": [
-        {
-          "ticketId": "T002",
-          "priority": "Medium",
-          "status": "Open",
-          "fullDegreeScore": 4.0,
-          "pageRankScore": 0.2775,
-          "betweennessScore": 3.0,
-          "louvainCommunityId": 6,
-          "labelPropagationCommunityId": 1
-        }
-      ]
+  {
+    queryType: "payment",
+    userQuestion: "Why are payments failing?",
+    queryVector: [0.08, 0.92, 0.12],
+    topK: 2
+  },
+  {
+    queryType: "app_crash",
+    userQuestion: "Why does the app crash?",
+    queryVector: [0.12, 0.10, 0.92],
+    topK: 2
+  }
+] AS request
+
+CALL db.index.vector.queryNodes(
+  'documentChunk_embedding_vector',
+  request.topK,
+  request.queryVector
+)
+YIELD node AS dc, score
+
+MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+
+WITH
+  request,
+  dc,
+  score,
+  ka,
+  i,
+  collect(DISTINCT t.ticketId) AS relatedTicketIds,
+  collect(DISTINCT c.name) AS relatedCustomers,
+  collect(DISTINCT p.name) AS relatedProducts,
+  collect(DISTINCT a.name) AS assignedAgents,
+  count(t) AS ticketCount,
+  coalesce(max(t.pageRankScore), 0.0) AS pageRankBoost,
+  coalesce(max(t.fullDegreeScore), 0.0) * 0.01 AS degreeBoost,
+  coalesce(max(t.betweennessScore), 0.0) * 0.01 AS betweennessBoost
+
+WITH
+  request,
+  {
+    chunkId: dc.chunkId,
+    text: dc.text,
+    vectorScore: score,
+    retrievalRankScore: score + pageRankBoost + degreeBoost + betweennessBoost,
+    article: {
+      articleId: ka.articleId,
+      title: ka.title
+    },
+    issue: {
+      issueId: i.issueId,
+      name: i.name,
+      severity: i.severity
+    },
+    operationalContext: {
+      status: CASE
+        WHEN ticketCount = 0 THEN "No related ticket found for this issue"
+        ELSE "Related ticket context found"
+      END,
+      ticketIds: relatedTicketIds,
+      customers: relatedCustomers,
+      products: relatedProducts,
+      assignedAgents: assignedAgents
+    },
+    rankingSignals: {
+      vectorScore: score,
+      pageRankBoost: pageRankBoost,
+      degreeBoost: degreeBoost,
+      betweennessBoost: betweennessBoost,
+      retrievalRankScore: score + pageRankBoost + degreeBoost + betweennessBoost
     }
-  ]
-}
+  } AS contextItem
+
+WITH
+  request,
+  collect(contextItem) AS retrievedContext,
+  collect(DISTINCT contextItem.issue) AS dedupedIssueContext,
+  collect(DISTINCT contextItem.operationalContext) AS dedupedOperationalContext,
+  collect(DISTINCT
+    CASE
+      WHEN contextItem.operationalContext.status = "No related ticket found for this issue"
+      THEN contextItem.operationalContext.status
+      ELSE null
+    END
+  ) AS dedupedWarnings
+
+RETURN
+  request.queryType AS queryType,
+  request.userQuestion AS userQuestion,
+  {
+    question: request.userQuestion,
+
+    retrievedEvidence: [
+      item IN retrievedContext | {
+        chunkId: item.chunkId,
+        text: item.text,
+        vectorScore: item.vectorScore,
+        retrievalRankScore: item.retrievalRankScore
+      }
+    ],
+
+    issueContext: dedupedIssueContext,
+
+    operationalContext: dedupedOperationalContext,
+
+    rankingSignals: [
+      item IN retrievedContext | item.rankingSignals
+    ],
+
+    warnings: dedupedWarnings,
+
+    instructionForDay5LLM: "Use only the provided retrieved evidence and graph context. If warnings exist, mention the data-quality limitation."
+  } AS llmReadyContext,
+
+  size(retrievedContext) AS retrievedEvidenceCount,
+  size(dedupedIssueContext) AS issueContextCount,
+  size(dedupedOperationalContext) AS operationalContextCount,
+  size(dedupedWarnings) AS warningCount
+
+ORDER BY
+  queryType;
 ```
 
-### Example response for App Crash
+# Step 7 — Final Day 4 retrieval validation summary
 
-```json
-{
-  "queryType": "app_crash",
-  "retrievalMode": "controlled_test_vector",
-  "topK": 2,
-  "retrievalStatus": "success",
-  "summary": {
-    "resultCount": 2,
-    "hasOperationalContext": false,
-    "warnings": [
-      "No related ticket found for this issue"
-    ]
+```cypher
+UNWIND [
+  {
+    queryType: "login",
+    userQuestion: "Why can't customers log in?",
+    queryVector: [0.92, 0.12, 0.05],
+    topK: 2
   },
-  "results": [
-    {
-      "chunk": {
-        "chunkId": "C-K003-001",
-        "text": "If the mobile app crashes, ask the customer to update the app and clear cache.",
-        "vectorScore": 0.9998478293418884
-      },
-      "article": {
-        "articleId": "K003",
-        "title": "Fix app crash"
-      },
-      "issue": {
-        "issueId": "I003",
-        "name": "App Crash",
-        "severity": "High"
-      },
-      "operationalContext": {
-        "status": "No related ticket found for this issue",
-        "ticketIds": [],
-        "customers": [],
-        "products": [],
-        "assignedAgents": []
-      },
-      "analyticsContext": [
-```
-# Step 2 — Verify local Python and FastAPI environment
+  {
+    queryType: "payment",
+    userQuestion: "Why are payments failing?",
+    queryVector: [0.08, 0.92, 0.12],
+    topK: 2
+  },
+  {
+    queryType: "app_crash",
+    userQuestion: "Why does the app crash?",
+    queryVector: [0.12, 0.10, 0.92],
+    topK: 2
+  }
+] AS request
 
-```bash
-echo "----- CURRENT USER -----"
-whoami
+CALL db.index.vector.queryNodes(
+  'documentChunk_embedding_vector',
+  request.topK,
+  request.queryVector
+)
+YIELD node AS dc, score
 
-echo "----- CURRENT DIRECTORY -----"
-pwd
+MATCH (dc)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
 
-echo "----- PYTHON VERSION -----"
-python3 --version || true
+WITH
+  request,
+  dc,
+  score,
+  ka,
+  i,
+  collect(DISTINCT t.ticketId) AS relatedTicketIds,
+  collect(DISTINCT c.name) AS relatedCustomers,
+  collect(DISTINCT p.name) AS relatedProducts,
+  collect(DISTINCT a.name) AS assignedAgents,
+  count(t) AS ticketCount,
+  coalesce(max(t.pageRankScore), 0.0) AS pageRankBoost,
+  coalesce(max(t.fullDegreeScore), 0.0) * 0.01 AS degreeBoost,
+  coalesce(max(t.betweennessScore), 0.0) * 0.01 AS betweennessBoost
 
-echo "----- PIP VERSION -----"
-python3 -m pip --version || true
+WITH
+  request,
+  {
+    chunkId: dc.chunkId,
+    text: dc.text,
+    vectorScore: score,
+    retrievalRankScore: score + pageRankBoost + degreeBoost + betweennessBoost,
+    issue: {
+      issueId: i.issueId,
+      name: i.name,
+      severity: i.severity
+    },
+    operationalContext: {
+      status: CASE
+        WHEN ticketCount = 0 THEN "No related ticket found for this issue"
+        ELSE "Related ticket context found"
+      END,
+      ticketIds: relatedTicketIds,
+      customers: relatedCustomers,
+      products: relatedProducts,
+      assignedAgents: assignedAgents
+    },
+    rankingSignals: {
+      vectorScore: score,
+      pageRankBoost: pageRankBoost,
+      degreeBoost: degreeBoost,
+      betweennessBoost: betweennessBoost,
+      retrievalRankScore: score + pageRankBoost + degreeBoost + betweennessBoost
+    }
+  } AS contextItem
 
-echo "----- FASTAPI CLI VERSION -----"
-fastapi --version || true
+WITH
+  request,
+  collect(contextItem) AS retrievedContext,
+  collect(DISTINCT contextItem.issue) AS dedupedIssueContext,
+  collect(DISTINCT contextItem.operationalContext) AS dedupedOperationalContext,
+  collect(DISTINCT
+    CASE
+      WHEN contextItem.operationalContext.status = "No related ticket found for this issue"
+      THEN contextItem.operationalContext.status
+      ELSE null
+    END
+  ) AS dedupedWarnings
 
-echo "----- PYTHON LOCATION -----"
-which python3 || true
+WITH
+  request,
+  retrievedContext,
+  dedupedIssueContext,
+  dedupedOperationalContext,
+  dedupedWarnings,
+  CASE
+    WHEN size(dedupedWarnings) > 0 THEN false
+    ELSE true
+  END AS hasOperationalContext
 
-echo "----- FASTAPI LOCATION -----"
-which fastapi || true
-```
+WITH
+  collect({
+    queryType: request.queryType,
+    userQuestion: request.userQuestion,
+    retrievedEvidenceCount: size(retrievedContext),
+    issueContextCount: size(dedupedIssueContext),
+    operationalContextCount: size(dedupedOperationalContext),
+    warningCount: size(dedupedWarnings),
+    hasOperationalContext: hasOperationalContext,
+    warnings: dedupedWarnings,
+    maxRetrievalRankScore: reduce(
+      maxScore = 0.0,
+      item IN retrievedContext |
+      CASE
+        WHEN item.retrievalRankScore > maxScore THEN item.retrievalRankScore
+        ELSE maxScore
+      END
+    )
+  }) AS questionSummaries
 
-## Step 3 — Prepare the Graph RAG API module directory
+RETURN
+  size(questionSummaries) AS totalQuestionsTested,
 
-The existing SupportGraph project root is `/opt/supportgraph`, which was created earlier for the Neo4j project infrastructure.
+  size([
+    q IN questionSummaries
+    WHERE q.retrievedEvidenceCount > 0
+  ]) AS questionsWithRetrievedEvidence,
 
-The project plan defines `06_graph_rag_api` as the module for the Graph RAG API layer.
+  size([
+    q IN questionSummaries
+    WHERE q.issueContextCount > 0
+  ]) AS questionsWithIssueContext,
 
-The official FastAPI virtual environments documentation recommends working inside a project directory and creating the virtual environment inside that project.
+  size([
+    q IN questionSummaries
+    WHERE q.hasOperationalContext = true
+  ]) AS questionsWithOperationalContext,
 
-Reference:
-- Project root from lab guide: `/opt/supportgraph`
-- Project plan module: `06_graph_rag_api`
-- FastAPI Virtual Environments: https://fastapi.tiangolo.com/virtual-environments/
+  size([
+    q IN questionSummaries
+    WHERE q.warningCount > 0
+  ]) AS questionsWithWarnings,
 
-Run:
+  [q IN questionSummaries WHERE q.warningCount > 0 | q.queryType] AS queryTypesWithWarnings,
 
-```bash
-echo "----- ENTER SUPPORTGRAPH ROOT -----"
-cd /opt/supportgraph
-
-echo "----- CREATE API MODULE IF NEEDED -----"
-mkdir -p 06_graph_rag_api
-
-echo "----- ENTER API MODULE -----"
-cd /opt/supportgraph/06_graph_rag_api
-
-echo "----- CONFIRM CURRENT LOCATION -----"
-pwd
-
-echo "----- LIST API MODULE CONTENTS -----"
-ls -la
-```
-
-# Step 3.2 — Create the virtual environment
-
-```bash
-echo "----- CURRENT LOCATION BEFORE VENV -----"
-pwd
-
-echo "----- CREATE PYTHON VIRTUAL ENVIRONMENT -----"
-python3 -m venv .venv
-
-echo "----- VERIFY VENV DIRECTORY -----"
-ls -la .venv
-
-echo "----- VERIFY VENV PYTHON EXISTS -----"
-ls -la .venv/bin/python .venv/bin/python3 2>/dev/null || true
+  questionSummaries AS day4RetrievalValidationSummary;
 ```
