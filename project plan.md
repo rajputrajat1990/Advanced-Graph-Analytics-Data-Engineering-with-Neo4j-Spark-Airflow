@@ -319,44 +319,157 @@ A working retrieval function that returns graph-aware context, but not yet a ful
 
 ## Day 5 – Add LLM and expose through FastAPI
 
+### Day 5 – Add dynamic retrieval, LLM reasoning, and expose through FastAPI
+
 ### What the learner learns
 
-The learner now sees how the graph becomes an AI-powered assistant.
+The learner now sees how the graph becomes an AI-powered assistant that can respond to **different types of user questions**, not only a few hard-coded retrieval patterns. Instead of assuming in advance what graph context is needed, the system learns to decide:
+
+- what the question is about,
+- which part of the graph is relevant,
+- whether the answer needs knowledge-only context,
+- whether it needs operational ticket context,
+- whether it needs customer, product, issue, or agent context,
+- and how to handle questions where some context is missing.
+
+This makes Day 5 more realistic and production-like, because real users do not ask only pre-defined demo questions. They ask unpredictable questions, and the system must dynamically choose the correct graph retrieval path before generating an answer. This expands the original Day 5 objective of connecting the retrieval layer to an LLM and exposing it through FastAPI.
 
 ### Project contribution
 
-We connect the retrieval layer to an LLM. The AI assistant can answer questions like:
+We extend the Day 4 retrieval layer into a **dynamic GraphRAG answer-generation service**.
 
-Question: What should we do for customers facing login failure after password reset?
+The system should now support a workflow like this:
 
-Expected answer:
+User asks a question  
+↓  
+System interprets the question type  
+↓  
+System selects the correct graph retrieval strategy  
+↓  
+System retrieves the relevant support subgraph and document context  
+↓  
+System formats the retrieved context for the LLM  
+↓  
+Local or external LLM generates an answer grounded in graph context  
+↓  
+FastAPI exposes the response as an API
 
-Based on recent tickets, the login failure issue is mostly linked to version 4.2 of the mobile app.
+The retrieval planner should dynamically decide which graph projection or retrieval path to use based on the user’s question. Example question categories could include:
 
-The most relevant knowledge article recommends clearing app cache, resetting password, and checking OTP delivery.
+- **Issue troubleshooting questions**  
+    Example: _Why are customers facing login failure?_  
+    Retrieval focus: `Issue`, `Ticket`, `KnowledgeArticle`, `DocumentChunk`, `Product`, `Agent`
+    
+- **Customer summary questions**  
+    Example: _Summarise customer Asha Sharma’s support situation._  
+    Retrieval focus: `Customer`, related `Ticket`, `Product`, `Issue`, assigned `Agent`, related knowledge coverage
+    
+- **Product issue questions**  
+    Example: _What are the main issues affecting the Mobile App?_  
+    Retrieval focus: `Product`, related `Ticket`, `Issue`, `Customer`, `KnowledgeArticle`
+    
+- **Knowledge-first support recommendation questions**  
+    Example: _What should we recommend for app crash issues?_  
+    Retrieval focus: `KnowledgeArticle`, `DocumentChunk`, `Issue`, and operational context if available
+    
+- **Agent or workload questions**  
+    Example: _Which issues is Rajat Support handling most often?_  
+    Retrieval focus: `Agent`, assigned `Ticket`, `Issue`, `Product`, score/context properties
+    
 
-High-priority customers affected include Customer A, Customer B, and Customer C.
+The dynamic retrieval layer should also handle missing operational context gracefully. For example, if a question maps to an issue that has knowledge coverage but no linked tickets, the system should still answer using knowledge context and explicitly mention the operational-data limitation. This reflects the Day 3 / Day 4 App Crash scenario, where knowledge exists but ticket coverage is missing. 
 
-We expose it as a FastAPI endpoint:
+The LLM answer stage should use retrieved evidence only. The answer should be grounded in:
 
-POST /ask
+- retrieved document chunks,
+- related knowledge article details,
+- related issue details,
+- optional operational context:
+    - tickets
+    - customers
+    - products
+    - assigned agents
+- and warnings when operational data is absent.
 
-GET /customer/{id}/summary
+The FastAPI layer should expose this behaviour through a production-style API, beginning with endpoints such as:
 
-GET /product/{id}/issues
+- `GET /health`
+- `GET /neo4j/health`
+- `GET /llm/health`
+- `POST /ask`
 
-The TOC says Day 5 covers LLM connection via LangChain or LlamaIndex, prompt engineering, RAG evaluation, packaging the pipeline as a FastAPI endpoint, and evaluating response quality. 
+Later endpoints can expand to:
+
+- `GET /customer/{customer_id}/summary`
+- `GET /product/{product_id}/issues`
+- `GET /issue/{issue_id}/knowledge`
+
+This keeps Day 5 directly connected to the broader platform vision, where FastAPI acts as the service layer between Neo4j, GraphRAG, the LLM, and downstream dashboards/reports.
 
 ### Output of Day 5
 
-A working “Ask SupportGraph” API.
+By the end of Day 5, the learner should have a working **Ask SupportGraph API prototype** that can:
+
+- accept a natural-language question,
+- determine the most relevant retrieval path dynamically,
+- query Neo4j for graph and knowledge context,
+- assemble an LLM-ready context payload,
+- call the LLM,
+- return a grounded answer,
+- and emit warnings when operational graph coverage is incomplete.
+
+This means Day 5 no longer ends with only a static retrieval-to-LLM demo. It ends with the first version of a **dynamic production-style GraphRAG API**. That is the correct preparation for the later platform stages in Spark, Airflow, NeoDash, Bloom, and Power BI.
+
+### Suggested production-style success criteria for Day 5
+
+Day 5 should be considered successful when all of the following work:
+
+1. **LLM connectivity works**
+    
+    - local or configured LLM responds from Python
+2. **Neo4j connectivity works**
+    
+    - Python can execute Cypher through the Neo4j driver
+3. **Dynamic retrieval planning works**
+    
+    - the system can choose different retrieval paths based on the question
+4. **GraphRAG context assembly works**
+    
+    - the system can retrieve knowledge and operational context together
+5. **Warning behaviour works**
+    
+    - if no operational context exists, the API still returns a useful knowledge-grounded answer with a clear warning
+6. **FastAPI endpoint works**
+    
+    - `POST /ask` returns a structured response with:
+        - user question
+        - retrieval plan or retrieval type
+        - answer
+        - supporting context summary
+        - warnings (if any)
+
+These criteria make Day 5 feel like a real-world backend milestone rather than only a classroom demo.
 
 ### Official documentation to consult during implementation
 
 - FastAPI official documentation
-- LangChain or LlamaIndex documentation
 - Neo4j Python Driver documentation
 - Neo4j Vector Index documentation
+- Neo4j Cypher Manual for:
+    - `MATCH`
+    - `OPTIONAL MATCH`
+    - `RETURN`
+    - `WITH`
+    - `CASE`
+    - aggregating functions such as `collect()`
+- LangChain or LlamaIndex documentation, depending on selected framework, especially for:
+    - routing
+    - retrieval chains
+    - prompt orchestration
+    - structured output handling
+- LLM provider documentation (local or remote), depending on the selected serving path
+
+This expands the original Day 5 documentation references so they better support dynamic retrieval planning and production-style API behaviour.
 
 ---
 
