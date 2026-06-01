@@ -4739,3 +4739,2436 @@ with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
 ```
 
 Then press: Ctrl+D
+
+# Step 38 — Run the GraphRAG readiness read script
+
+```shell
+python test_graphrag_readiness.py
+```
+
+# Step 39 — Create the first dynamic retrieval planner script
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee retrieval_planner.py
+```
+
+Now paste this Python code exactly:
+
+```python
+def classify_question(question: str) -> str:
+    q = question.lower()
+
+    if any(word in q for word in ["customer", "customer id", "summary", "customer summary"]):
+        return "customer_summary"
+
+    if any(word in q for word in ["product", "mobile app", "payment gateway", "issues affecting", "top product issues"]):
+        return "product_issue_analysis"
+
+    if any(word in q for word in ["agent", "assigned", "workload", "handled by", "support engineer"]):
+        return "agent_workload"
+
+    if any(word in q for word in ["recommend", "what should we do", "what should agents do", "knowledge article", "fix", "resolve"]):
+        return "knowledge_recommendation"
+
+    if any(word in q for word in ["login", "payment", "app crash", "issue", "failure", "problem", "error", "why are"]):
+        return "issue_troubleshooting"
+
+    return "generic_support_question"
+
+
+if __name__ == "__main__":
+    examples = [
+        "Why are customers facing login failure?",
+        "Summarise customer Asha Sharma's support situation.",
+        "What are the main issues affecting the Mobile App?",
+        "Which issues is Rajat Support handling most often?",
+        "What should we recommend for app crash issues?",
+        "Help me understand the current support situation."
+    ]
+
+    print("Dynamic retrieval planner classification:")
+    for question in examples:
+        category = classify_question(question)
+        print(f"{question} -> {category}")
+```
+
+Then press: Ctrl+D
+
+# Step 40 — Run the dynamic retrieval planner
+
+```bash
+python retrieval_planner.py
+```
+
+# Step 41 — Refine the dynamic retrieval planner rules
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee retrieval_planner.py
+```
+
+Now paste this updated Python code exactly:
+
+```python
+def classify_question(question: str) -> str:
+    q = question.lower()
+
+    # Agent/workload questions should be checked early
+    if any(phrase in q for phrase in [
+        "handled by",
+        "handling most often",
+        "which issues is",
+        "agent",
+        "assigned",
+        "workload",
+        "support engineer",
+        "support agent"
+    ]):
+        return "agent_workload"
+
+    # Knowledge recommendation questions should be checked before generic issue checks
+    if any(phrase in q for phrase in [
+        "what should we recommend",
+        "what should we do",
+        "what should agents do",
+        "knowledge article",
+        "fix",
+        "resolve",
+        "recommendation"
+    ]):
+        return "knowledge_recommendation"
+
+    # Customer summary should require clear summary-style intent
+    if (
+        "customer id" in q
+        or (
+            "customer" in q
+            and any(word in q for word in [
+                "summary",
+                "summarise",
+                "summarize",
+                "situation",
+                "history",
+                "profile"
+            ])
+        )
+    ):
+        return "customer_summary"
+
+    # Product issue questions should be checked before generic issue troubleshooting
+    if any(phrase in q for phrase in [
+        "product",
+        "mobile app",
+        "payment gateway",
+        "issues affecting",
+        "top product issues"
+    ]):
+        return "product_issue_analysis"
+
+    # Issue troubleshooting is the generic issue-focused path
+    if any(phrase in q for phrase in [
+        "login",
+        "payment",
+        "app crash",
+        "issue",
+        "failure",
+        "problem",
+        "error",
+        "why are",
+        "why is",
+        "why do"
+    ]):
+        return "issue_troubleshooting"
+
+    return "generic_support_question"
+
+
+if __name__ == "__main__":
+    examples = [
+        "Why are customers facing login failure?",
+        "Summarise customer Asha Sharma's support situation.",
+        "What are the main issues affecting the Mobile App?",
+        "Which issues is Rajat Support handling most often?",
+        "What should we recommend for app crash issues?",
+        "Help me understand the current support situation."
+    ]
+
+    print("Dynamic retrieval planner classification:")
+    for question in examples:
+        category = classify_question(question)
+        print(f"{question} -> {category}")
+```
+
+Then press: Ctrl+D
+
+# Step 41A — Verify the current retrieval planner file
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+cat -n retrieval_planner.py
+```
+
+# Step 41B — Overwrite retrieval_planner.py with the refined rule order
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee retrieval_planner.py
+```
+
+Now paste this exact content:
+
+```python
+def classify_question(question: str) -> str:
+    q = question.lower()
+
+    if any(phrase in q for phrase in [
+        "handled by",
+        "handling most often",
+        "which issues is",
+        "agent",
+        "assigned",
+        "workload",
+        "support engineer",
+        "support agent",
+        "rajat support"
+    ]):
+        return "agent_workload"
+
+    elif any(phrase in q for phrase in [
+        "what should we recommend",
+        "what should we do",
+        "what should agents do",
+        "knowledge article",
+        "fix",
+        "resolve",
+        "recommendation"
+    ]):
+        return "knowledge_recommendation"
+
+    elif (
+        "customer id" in q
+        or (
+            "customer" in q
+            and any(word in q for word in [
+                "summary",
+                "summarise",
+                "summarize",
+                "situation",
+                "history",
+                "profile"
+            ])
+        )
+    ):
+        return "customer_summary"
+
+    elif any(phrase in q for phrase in [
+        "product",
+        "mobile app",
+        "payment gateway",
+        "issues affecting",
+        "top product issues"
+    ]):
+        return "product_issue_analysis"
+
+    elif any(phrase in q for phrase in [
+        "login",
+        "payment",
+        "app crash",
+        "issue",
+        "failure",
+        "problem",
+        "error",
+        "why are",
+        "why is",
+        "why do"
+    ]):
+        return "issue_troubleshooting"
+
+    else:
+        return "generic_support_question"
+
+
+if __name__ == "__main__":
+    examples = [
+        "Why are customers facing login failure?",
+        "Summarise customer Asha Sharma's support situation.",
+        "What are the main issues affecting the Mobile App?",
+        "Which issues is Rajat Support handling most often?",
+        "What should we recommend for app crash issues?",
+        "Help me understand the current support situation."
+    ]
+
+    print("Dynamic retrieval planner classification:")
+    for question in examples:
+        category = classify_question(question)
+        print(f"{question} -> {category}")
+```
+
+Then press: Ctrl+D
+
+# Step 42 — Verify the updated retrieval planner file
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+cat -n retrieval_planner.py
+```
+
+# Step 43 — Run the refined dynamic retrieval planner
+
+```bash
+python retrieval_planner.py
+```
+
+# Step 44 — Create the first planner-driven issue retrieval query shape
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee issue_retrieval_query.py
+```
+
+Now paste this exact code:
+
+```python
+from retrieval_planner import classify_question
+
+
+def build_issue_troubleshooting_query():
+    return """
+MATCH (i:Issue)
+OPTIONAL MATCH (i)<-[:ABOUT]-(t:SupportTicket)
+OPTIONAL MATCH (t)-[:RAISED_BY]->(c:Customer)
+OPTIONAL MATCH (t)-[:AFFECTS]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:SupportAgent)
+OPTIONAL MATCH (ka:KnowledgeArticle)-[:RESOLVES]->(i)
+RETURN
+    i.title AS issue_title,
+    i.description AS issue_description,
+    collect(t.ticketId) AS ticket_ids,
+    collect(c.name) AS customer_names,
+    collect(p.name) AS product_names,
+    collect(a.name) AS assigned_agents,
+    collect(ka.title) AS knowledge_articles
+"""
+
+
+if __name__ == "__main__":
+    question = "Why are customers facing login failure?"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category == "issue_troubleshooting":
+        print("Cypher query shape for issue troubleshooting:")
+        print(build_issue_troubleshooting_query())
+    else:
+        print("This script currently only defines the issue_troubleshooting query shape.")
+```
+
+Then press: Ctrl+D
+
+# Step 45 — Run the planner-driven issue retrieval query-shape script
+
+```bash
+python issue_retrieval_query.py
+```
+
+# Step 46 — Correct issue_retrieval_query.py to match the real SupportGraph schema
+
+> the real SupportGraph schema uses Ticket, Customer, Product, Agent, Issue, and KnowledgeArticle with relationships such as (:Ticket)-[:HAS_ISSUE]->(:Issue), (:Customer)-[:RAISED]->(:Ticket), (:Ticket)-[:ABOUT]->(:Product), (:Ticket)-[:ASSIGNED_TO]->(:Agent), and (:KnowledgeArticle)-[:SOLVES]->(:Issue). It does not use SupportTicket, SupportAgent, RAISED_BY, AFFECTS, or RESOLVES. It also defines issue properties as issueId, name, category, and severity, not title / description.
+
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee issue_retrieval_query.py
+```
+
+Now paste this exact code:
+
+```python
+from retrieval_planner import classify_question
+
+
+def build_issue_troubleshooting_query():
+    return """
+MATCH (i:Issue)
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+OPTIONAL MATCH (ka:KnowledgeArticle)-[:SOLVES]->(i)
+RETURN
+    i.issueId AS issue_id,
+    i.name AS issue_name,
+    i.severity AS issue_severity,
+    collect(t.ticketId) AS ticket_ids,
+    collect(c.name) AS customer_names,
+    collect(p.name) AS product_names,
+    collect(a.name) AS assigned_agents,
+    collect(ka.title) AS knowledge_articles
+"""
+
+
+if __name__ == "__main__":
+    question = "Why are customers facing login failure?"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category == "issue_troubleshooting":
+        print("Cypher query shape for issue troubleshooting:")
+        print(build_issue_troubleshooting_query())
+    else:
+        print("This script currently only defines the issue_troubleshooting query shape.")
+```
+
+Then press: Ctrl+D
+
+# Step 47 — Run the corrected issue retrieval query-shape script
+
+```bash
+python issue_retrieval_query.py
+```
+
+# Step 48 — Create the live issue retrieval script
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee issue_retrieval_live.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from retrieval_planner import classify_question
+from issue_retrieval_query import build_issue_troubleshooting_query
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+
+if __name__ == "__main__":
+    question = "Why are customers facing login failure?"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category != "issue_troubleshooting":
+        print("This script currently runs only the issue_troubleshooting retrieval path.")
+    else:
+        query = build_issue_troubleshooting_query()
+
+        with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+            records, summary, keys = driver.execute_query(
+                query,
+                database_=NEO4J_DATABASE
+            )
+
+            print("Live issue retrieval results:")
+            for record in records:
+                print("-" * 80)
+                print(f"Issue: {record['issue_id']} - {record['issue_name']} ({record['issue_severity']})")
+                print(f"Tickets: {record['ticket_ids']}")
+                print(f"Customers: {record['customer_names']}")
+                print(f"Products: {record['product_names']}")
+                print(f"Assigned agents: {record['assigned_agents']}")
+                print(f"Knowledge articles: {record['knowledge_articles']}")
+```
+
+Then press: Ctrl+D
+
+# Step 49 — Run the live issue retrieval script
+
+```shell
+python issue_retrieval_live.py
+```
+
+# Step 50 — Make the issue query parameter-ready
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee issue_retrieval_query.py
+```
+
+Now paste this exact code:
+
+```python
+from retrieval_planner import classify_question
+
+
+def build_issue_troubleshooting_query():
+    return """
+MATCH (i:Issue)
+WHERE i.name = $issue_name
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+OPTIONAL MATCH (ka:KnowledgeArticle)-[:SOLVES]->(i)
+RETURN
+    i.issueId AS issue_id,
+    i.name AS issue_name,
+    i.severity AS issue_severity,
+    collect(t.ticketId) AS ticket_ids,
+    collect(c.name) AS customer_names,
+    collect(p.name) AS product_names,
+    collect(a.name) AS assigned_agents,
+    collect(ka.title) AS knowledge_articles
+"""
+
+
+if __name__ == "__main__":
+    question = "Why are customers facing login failure?"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category == "issue_troubleshooting":
+        print("Cypher query shape for issue troubleshooting:")
+        print(build_issue_troubleshooting_query())
+        print()
+        print("Expected parameter:")
+        print({"issue_name": "Login Failure"})
+    else:
+        print("This script currently only defines the issue_troubleshooting query shape.")
+```
+
+Then press: Ctrl+D
+
+# Step 51 — Run the parameter-ready query-shape script
+
+```bash
+python issue_retrieval_query.py
+```
+
+# Step 52 — Update the live retrieval script to pass the issue parameter
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee issue_retrieval_live.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from retrieval_planner import classify_question
+from issue_retrieval_query import build_issue_troubleshooting_query
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+
+if __name__ == "__main__":
+    question = "Why are customers facing login failure?"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category != "issue_troubleshooting":
+        print("This script currently runs only the issue_troubleshooting retrieval path.")
+    else:
+        query = build_issue_troubleshooting_query()
+        params = {"issue_name": "Login Failure"}
+
+        with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+            records, summary, keys = driver.execute_query(
+                query,
+                params,
+                database_=NEO4J_DATABASE
+            )
+
+            print("Live issue retrieval results:")
+            for record in records:
+                print("-" * 80)
+                print(f"Issue: {record['issue_id']} - {record['issue_name']} ({record['issue_severity']})")
+                print(f"Tickets: {record['ticket_ids']}")
+                print(f"Customers: {record['customer_names']}")
+                print(f"Products: {record['product_names']}")
+                print(f"Assigned agents: {record['assigned_agents']}")
+                print(f"Knowledge articles: {record['knowledge_articles']}")
+```
+
+Then press: Ctrl+D
+
+# Step 53 — Run the parameterised live issue retrieval script
+
+```bash
+python issue_retrieval_live.py
+```
+
+# Step 54 — Update the live retrieval script to infer issue_name from the question
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee issue_retrieval_live.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from retrieval_planner import classify_question
+from issue_retrieval_query import build_issue_troubleshooting_query
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+
+def infer_issue_name(question):
+    q = question.lower()
+
+    if any(phrase in q for phrase in [
+        "login",
+        "log in",
+        "sign in",
+        "otp"
+    ]):
+        return "Login Failure"
+
+    elif any(phrase in q for phrase in [
+        "payment",
+        "checkout",
+        "transaction",
+        "card"
+    ]):
+        return "Payment Failure"
+
+    elif any(phrase in q for phrase in [
+        "app crash",
+        "crash",
+        "compatibility"
+    ]):
+        return "App Crash"
+
+    else:
+        return None
+
+
+if __name__ == "__main__":
+    question = "Why are customers facing login failure?"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category != "issue_troubleshooting":
+        print("This script currently runs only the issue_troubleshooting retrieval path.")
+    else:
+        issue_name = infer_issue_name(question)
+
+        print("Inferred issue name:")
+        print(issue_name)
+        print()
+
+        if issue_name is None:
+            print("Could not infer a supported issue name from the question.")
+        else:
+            query = build_issue_troubleshooting_query()
+            params = {"issue_name": issue_name}
+
+            with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+                records, summary, keys = driver.execute_query(
+                    query,
+                    params,
+                    database_=NEO4J_DATABASE
+                )
+
+                print("Live issue retrieval results:")
+                for record in records:
+                    print("-" * 80)
+                    print(f"Issue: {record['issue_id']} - {record['issue_name']} ({record['issue_severity']})")
+                    print(f"Tickets: {record['ticket_ids']}")
+                    print(f"Customers: {record['customer_names']}")
+                    print(f"Products: {record['product_names']}")
+                    print(f"Assigned agents: {record['assigned_agents']}")
+                    print(f"Knowledge articles: {record['knowledge_articles']}")
+```
+
+Then press: Ctrl+D
+
+# Step 55 — Run the updated live retrieval script with inferred issue mapping
+
+```bash
+python issue_retrieval_live.py
+```
+
+# Step 56 — Update the test question to Payment Failure
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee issue_retrieval_live.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from retrieval_planner import classify_question
+from issue_retrieval_query import build_issue_troubleshooting_query
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+
+def infer_issue_name(question):
+    q = question.lower()
+
+    if any(phrase in q for phrase in [
+        "login",
+        "log in",
+        "sign in",
+        "otp"
+    ]):
+        return "Login Failure"
+
+    elif any(phrase in q for phrase in [
+        "payment",
+        "checkout",
+        "transaction",
+        "card"
+    ]):
+        return "Payment Failure"
+
+    elif any(phrase in q for phrase in [
+        "app crash",
+        "crash",
+        "compatibility"
+    ]):
+        return "App Crash"
+
+    else:
+        return None
+
+
+if __name__ == "__main__":
+    question = "Why are payments failing?"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category != "issue_troubleshooting":
+        print("This script currently runs only the issue_troubleshooting retrieval path.")
+    else:
+        issue_name = infer_issue_name(question)
+
+        print("Inferred issue name:")
+        print(issue_name)
+        print()
+
+        if issue_name is None:
+            print("Could not infer a supported issue name from the question.")
+        else:
+            query = build_issue_troubleshooting_query()
+            params = {"issue_name": issue_name}
+
+            with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+                records, summary, keys = driver.execute_query(
+                    query,
+                    params,
+                    database_=NEO4J_DATABASE
+                )
+
+                print("Live issue retrieval results:")
+                for record in records:
+                    print("-" * 80)
+                    print(f"Issue: {record['issue_id']} - {record['issue_name']} ({record['issue_severity']})")
+                    print(f"Tickets: {record['ticket_ids']}")
+                    print(f"Customers: {record['customer_names']}")
+                    print(f"Products: {record['product_names']}")
+                    print(f"Assigned agents: {record['assigned_agents']}")
+                    print(f"Knowledge articles: {record['knowledge_articles']}")
+```
+
+Then press: Ctrl+D
+
+# Step 57 — Run the Payment Failure test
+
+```bash
+python issue_retrieval_live.py
+```
+
+# Step 58 — Change the test question to App Crash
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee issue_retrieval_live.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from retrieval_planner import classify_question
+from issue_retrieval_query import build_issue_troubleshooting_query
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+
+def infer_issue_name(question):
+    q = question.lower()
+
+    if any(phrase in q for phrase in [
+        "login",
+        "log in",
+        "sign in",
+        "otp"
+    ]):
+        return "Login Failure"
+
+    elif any(phrase in q for phrase in [
+        "payment",
+        "checkout",
+        "transaction",
+        "card"
+    ]):
+        return "Payment Failure"
+
+    elif any(phrase in q for phrase in [
+        "app crash",
+        "crash",
+        "compatibility"
+    ]):
+        return "App Crash"
+
+    else:
+        return None
+
+
+if __name__ == "__main__":
+    question = "Why does the app crash?"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category != "issue_troubleshooting":
+        print("This script currently runs only the issue_troubleshooting retrieval path.")
+    else:
+        issue_name = infer_issue_name(question)
+
+        print("Inferred issue name:")
+        print(issue_name)
+        print()
+
+        if issue_name is None:
+            print("Could not infer a supported issue name from the question.")
+        else:
+            query = build_issue_troubleshooting_query()
+            params = {"issue_name": issue_name}
+
+            with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+                records, summary, keys = driver.execute_query(
+                    query,
+                    params,
+                    database_=NEO4J_DATABASE
+                )
+
+                print("Live issue retrieval results:")
+                for record in records:
+                    print("-" * 80)
+                    print(f"Issue: {record['issue_id']} - {record['issue_name']} ({record['issue_severity']})")
+                    print(f"Tickets: {record['ticket_ids']}")
+                    print(f"Customers: {record['customer_names']}")
+                    print(f"Products: {record['product_names']}")
+                    print(f"Assigned agents: {record['assigned_agents']}")
+                    print(f"Knowledge articles: {record['knowledge_articles']}")
+```
+
+Then press: Ctrl+D
+
+
+# Step 59 — Run the App Crash test
+
+```bash
+python issue_retrieval_live.py
+```
+
+# Step 60 — Create the first retrieval + LM Studio answer script
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee ask_supportgraph_once.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from retrieval_planner import classify_question
+from issue_retrieval_query import build_issue_troubleshooting_query
+from issue_retrieval_live import infer_issue_name
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+
+def fetch_issue_context(question):
+    category = classify_question(question)
+
+    if category != "issue_troubleshooting":
+        return {
+            "category": category,
+            "issue_name": None,
+            "records": []
+        }
+
+    issue_name = infer_issue_name(question)
+
+    if issue_name is None:
+        return {
+            "category": category,
+            "issue_name": None,
+            "records": []
+        }
+
+    query = build_issue_troubleshooting_query()
+    params = {"issue_name": issue_name}
+
+    with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+        records, summary, keys = driver.execute_query(
+            query,
+            params,
+            database_=NEO4J_DATABASE
+        )
+
+    return {
+        "category": category,
+        "issue_name": issue_name,
+        "records": records
+    }
+
+
+def build_context_text(question, retrieval_result):
+    category = retrieval_result["category"]
+    issue_name = retrieval_result["issue_name"]
+    records = retrieval_result["records"]
+
+    lines = []
+    lines.append(f"User question: {question}")
+    lines.append(f"Planner category: {category}")
+    lines.append(f"Inferred issue name: {issue_name}")
+    lines.append("")
+
+    if not records:
+        lines.append("No graph retrieval context was found.")
+        return "\n".join(lines)
+
+    lines.append("Retrieved SupportGraph context:")
+
+    for record in records:
+        lines.append("-" * 60)
+        lines.append(
+            f"Issue: {record['issue_id']} - {record['issue_name']} ({record['issue_severity']})"
+        )
+        lines.append(f"Tickets: {record['ticket_ids']}")
+        lines.append(f"Customers: {record['customer_names']}")
+        lines.append(f"Products: {record['product_names']}")
+        lines.append(f"Assigned agents: {record['assigned_agents']}")
+        lines.append(f"Knowledge articles: {record['knowledge_articles']}")
+
+        if not record["ticket_ids"]:
+            lines.append("Operational note: knowledge exists, but no related ticket context was found.")
+
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    question = "Why are payments failing?"
+
+    retrieval_result = fetch_issue_context(question)
+    context_text = build_context_text(question, retrieval_result)
+
+    print("Retrieved context sent to LM Studio:")
+    print(context_text)
+    print()
+    print("=" * 80)
+    print()
+
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a support assistant for the SupportGraph Intelligence Platform. "
+                    "Answer only from the retrieved graph context provided. "
+                    "If operational context is missing, say so clearly."
+                )
+            },
+            {
+                "role": "user",
+                "content": context_text
+            }
+        ],
+        temperature=0.2,
+        max_tokens=300
+    )
+
+    print("LM Studio answer:")
+    print(response.choices[0].message.content.strip())
+```
+
+Then press: Ctrl+D
+
+# Step 61 — Run the first retrieval + LM Studio answer script
+
+```bash
+python ask_supportgraph_once.py
+```
+
+# Step 62 — Update ask_supportgraph_once.py to prompt for a question
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee ask_supportgraph_once.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from retrieval_planner import classify_question
+from issue_retrieval_query import build_issue_troubleshooting_query
+from issue_retrieval_live import infer_issue_name
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+
+def fetch_issue_context(question):
+    category = classify_question(question)
+
+    if category != "issue_troubleshooting":
+        return {
+            "category": category,
+            "issue_name": None,
+            "records": []
+        }
+
+    issue_name = infer_issue_name(question)
+
+    if issue_name is None:
+        return {
+            "category": category,
+            "issue_name": None,
+            "records": []
+        }
+
+    query = build_issue_troubleshooting_query()
+    params = {"issue_name": issue_name}
+
+    with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+        records, summary, keys = driver.execute_query(
+            query,
+            params,
+            database_=NEO4J_DATABASE
+        )
+
+    return {
+        "category": category,
+        "issue_name": issue_name,
+        "records": records
+    }
+
+
+def build_context_text(question, retrieval_result):
+    category = retrieval_result["category"]
+    issue_name = retrieval_result["issue_name"]
+    records = retrieval_result["records"]
+
+    lines = []
+    lines.append(f"User question: {question}")
+    lines.append(f"Planner category: {category}")
+    lines.append(f"Inferred issue name: {issue_name}")
+    lines.append("")
+
+    if not records:
+        lines.append("No graph retrieval context was found.")
+        return "\n".join(lines)
+
+    lines.append("Retrieved SupportGraph context:")
+
+    for record in records:
+        lines.append("-" * 60)
+        lines.append(
+            f"Issue: {record['issue_id']} - {record['issue_name']} ({record['issue_severity']})"
+        )
+        lines.append(f"Tickets: {record['ticket_ids']}")
+        lines.append(f"Customers: {record['customer_names']}")
+        lines.append(f"Products: {record['product_names']}")
+        lines.append(f"Assigned agents: {record['assigned_agents']}")
+        lines.append(f"Knowledge articles: {record['knowledge_articles']}")
+
+        if not record["ticket_ids"]:
+            lines.append("Operational note: knowledge exists, but no related ticket context was found.")
+
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    question = input("Enter your support question: ").strip()
+
+    retrieval_result = fetch_issue_context(question)
+    context_text = build_context_text(question, retrieval_result)
+
+    print()
+    print("Retrieved context sent to LM Studio:")
+    print(context_text)
+    print()
+    print("=" * 80)
+    print()
+
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a support assistant for the SupportGraph Intelligence Platform. "
+                    "Answer only from the retrieved graph context provided. "
+                    "If operational context is missing, say so clearly."
+                )
+            },
+            {
+                "role": "user",
+                "content": context_text
+            }
+        ],
+        temperature=0.2,
+        max_tokens=300
+    )
+
+    print("LM Studio answer:")
+    print(response.choices[0].message.content.strip())
+```
+
+Then press: Ctrl+D
+
+# Step 63 — Run the reusable interactive script
+
+```bash
+python ask_supportgraph_once.py
+```
+
+# Step 64 — Return knowledge article content from the retrieval query
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee issue_retrieval_query.py
+```
+
+Now paste this exact code:
+
+```python
+from retrieval_planner import classify_question
+
+
+def build_issue_troubleshooting_query():
+    return """
+MATCH (i:Issue)
+WHERE i.name = $issue_name
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+OPTIONAL MATCH (ka:KnowledgeArticle)-[:SOLVES]->(i)
+RETURN
+    i.issueId AS issue_id,
+    i.name AS issue_name,
+    i.severity AS issue_severity,
+    collect(t.ticketId) AS ticket_ids,
+    collect(c.name) AS customer_names,
+    collect(p.name) AS product_names,
+    collect(a.name) AS assigned_agents,
+    collect(ka.title) AS knowledge_articles,
+    collect(ka.content) AS knowledge_article_contents
+"""
+
+
+if __name__ == "__main__":
+    question = "Why are customers facing login failure?"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category == "issue_troubleshooting":
+        print("Cypher query shape for issue troubleshooting:")
+        print(build_issue_troubleshooting_query())
+        print()
+        print("Expected parameter:")
+        print({"issue_name": "Login Failure"})
+    else:
+        print("This script currently only defines the issue_troubleshooting query shape.")
+```
+
+Then press: Ctrl+D
+
+# Step 65 — Update ask_supportgraph_once.py to send article content to LM Studio
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee ask_supportgraph_once.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from retrieval_planner import classify_question
+from issue_retrieval_query import build_issue_troubleshooting_query
+from issue_retrieval_live import infer_issue_name
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+
+def fetch_issue_context(question):
+    category = classify_question(question)
+
+    if category != "issue_troubleshooting":
+        return {
+            "category": category,
+            "issue_name": None,
+            "records": []
+        }
+
+    issue_name = infer_issue_name(question)
+
+    if issue_name is None:
+        return {
+            "category": category,
+            "issue_name": None,
+            "records": []
+        }
+
+    query = build_issue_troubleshooting_query()
+    params = {"issue_name": issue_name}
+
+    with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+        records, summary, keys = driver.execute_query(
+            query,
+            params,
+            database_=NEO4J_DATABASE
+        )
+
+    return {
+        "category": category,
+        "issue_name": issue_name,
+        "records": records
+    }
+
+
+def build_context_text(question, retrieval_result):
+    category = retrieval_result["category"]
+    issue_name = retrieval_result["issue_name"]
+    records = retrieval_result["records"]
+
+    lines = []
+    lines.append(f"User question: {question}")
+    lines.append(f"Planner category: {category}")
+    lines.append(f"Inferred issue name: {issue_name}")
+    lines.append("")
+
+    if not records:
+        lines.append("No graph retrieval context was found.")
+        return "\n".join(lines)
+
+    lines.append("Retrieved SupportGraph context:")
+
+    for record in records:
+        lines.append("-" * 60)
+        lines.append(
+            f"Issue: {record['issue_id']} - {record['issue_name']} ({record['issue_severity']})"
+        )
+        lines.append(f"Tickets: {record['ticket_ids']}")
+        lines.append(f"Customers: {record['customer_names']}")
+        lines.append(f"Products: {record['product_names']}")
+        lines.append(f"Assigned agents: {record['assigned_agents']}")
+        lines.append(f"Knowledge articles: {record['knowledge_articles']}")
+        lines.append(f"Knowledge article contents: {record['knowledge_article_contents']}")
+
+        if not record["ticket_ids"]:
+            lines.append("Operational note: knowledge exists, but no related ticket context was found.")
+
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    question = input("Enter your support question: ").strip()
+
+    retrieval_result = fetch_issue_context(question)
+    context_text = build_context_text(question, retrieval_result)
+
+    print()
+    print("Retrieved context sent to LM Studio:")
+    print(context_text)
+    print()
+    print("=" * 80)
+    print()
+
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a support assistant for the SupportGraph Intelligence Platform. "
+                    "Answer only from the retrieved graph context provided. "
+                    "If operational context is missing, say so clearly. "
+                    "If knowledge article contents are provided, use them to explain causes or recommended actions."
+                )
+            },
+            {
+                "role": "user",
+                "content": context_text
+            }
+        ],
+        temperature=0.2,
+        max_tokens=300
+    )
+
+    print("LM Studio answer:")
+    print(response.choices[0].message.content.strip())
+```
+
+Then press: Ctrl+D
+
+# Step 66 — Rerun the interactive script with the payment question
+
+```bash
+python ask_supportgraph_once.py
+```
+
+type
+
+```text
+why are payments failing?
+```
+# Step 67 — Run the interactive script and test App Crash
+
+```bash
+python ask_supportgraph_once.py
+```
+
+When it prompts: Enter your support question:
+
+please type exactly:
+
+```text
+why does the app crash?
+```
+
+# Step 68 — Add clean unsupported-question handling to ask_supportgraph_once.py
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee ask_supportgraph_once.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from retrieval_planner import classify_question
+from issue_retrieval_query import build_issue_troubleshooting_query
+from issue_retrieval_live import infer_issue_name
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+SUPPORTED_ISSUES = [
+    "Login Failure",
+    "Payment Failure",
+    "App Crash"
+]
+
+
+def fetch_issue_context(question):
+    category = classify_question(question)
+
+    if category != "issue_troubleshooting":
+        return {
+            "category": category,
+            "issue_name": None,
+            "records": []
+        }
+
+    issue_name = infer_issue_name(question)
+
+    if issue_name is None:
+        return {
+            "category": category,
+            "issue_name": None,
+            "records": []
+        }
+
+    query = build_issue_troubleshooting_query()
+    params = {"issue_name": issue_name}
+
+    with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+        records, summary, keys = driver.execute_query(
+            query,
+            params,
+            database_=NEO4J_DATABASE
+        )
+
+    return {
+        "category": category,
+        "issue_name": issue_name,
+        "records": records
+    }
+
+
+def build_context_text(question, retrieval_result):
+    category = retrieval_result["category"]
+    issue_name = retrieval_result["issue_name"]
+    records = retrieval_result["records"]
+
+    lines = []
+    lines.append(f"User question: {question}")
+    lines.append(f"Planner category: {category}")
+    lines.append(f"Inferred issue name: {issue_name}")
+    lines.append("")
+
+    if not records:
+        lines.append("No graph retrieval context was found.")
+        return "\n".join(lines)
+
+    lines.append("Retrieved SupportGraph context:")
+
+    for record in records:
+        lines.append("-" * 60)
+        lines.append(
+            f"Issue: {record['issue_id']} - {record['issue_name']} ({record['issue_severity']})"
+        )
+        lines.append(f"Tickets: {record['ticket_ids']}")
+        lines.append(f"Customers: {record['customer_names']}")
+        lines.append(f"Products: {record['product_names']}")
+        lines.append(f"Assigned agents: {record['assigned_agents']}")
+        lines.append(f"Knowledge articles: {record['knowledge_articles']}")
+        lines.append(f"Knowledge article contents: {record['knowledge_article_contents']}")
+
+        if not record["ticket_ids"]:
+            lines.append("Operational note: knowledge exists, but no related ticket context was found.")
+
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    question = input("Enter your support question: ").strip()
+
+    retrieval_result = fetch_issue_context(question)
+    category = retrieval_result["category"]
+    issue_name = retrieval_result["issue_name"]
+    records = retrieval_result["records"]
+
+    if category != "issue_troubleshooting":
+        print()
+        print("This interactive script currently supports issue-troubleshooting questions only.")
+        print("Supported issue examples:")
+        for item in SUPPORTED_ISSUES:
+            print("- " + item)
+
+    elif issue_name is None:
+        print()
+        print("I could not map your question to a currently supported issue.")
+        print("Supported issue examples:")
+        for item in SUPPORTED_ISSUES:
+            print("- " + item)
+
+    elif not records:
+        print()
+        print("The question mapped to a supported issue, but no graph context was found.")
+        print("Issue name:", issue_name)
+
+    else:
+        context_text = build_context_text(question, retrieval_result)
+
+        print()
+        print("Retrieved context sent to LM Studio:")
+        print(context_text)
+        print()
+        print("=" * 80)
+        print()
+
+        response = LMSTUDIO_CLIENT.chat.completions.create(
+            model=LMSTUDIO_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a support assistant for the SupportGraph Intelligence Platform. "
+                        "Answer only from the retrieved graph context provided. "
+                        "If operational context is missing, say so clearly. "
+                        "If knowledge article contents are provided, use them to explain causes or recommended actions."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": context_text
+                }
+            ],
+            temperature=0.2,
+            max_tokens=300
+        )
+
+        print("LM Studio answer:")
+        print(response.choices[0].message.content.strip())
+```
+
+Then press: Ctrl+D
+
+# Step 69 — Run the script with an unsupported question
+
+```bash
+python ask_supportgraph_once.py
+```
+
+type
+
+```text
+summarise customer Asha Sharma's support situation
+```
+
+# Step 70 — Create the first customer_summary query-shape script
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee customer_summary_query.py
+```
+
+Now paste this exact code:
+
+```python
+from retrieval_planner import classify_question
+
+
+def build_customer_summary_query():
+    return """
+MATCH (c:Customer)
+WHERE c.name = $customer_name
+OPTIONAL MATCH (c)-[:RAISED]->(t:Ticket)
+OPTIONAL MATCH (t)-[:HAS_ISSUE]->(i:Issue)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+OPTIONAL MATCH (ka:KnowledgeArticle)-[:SOLVES]->(i)
+RETURN
+    c.customerId AS customer_id,
+    c.name AS customer_name,
+    collect(t.ticketId) AS ticket_ids,
+    collect(i.name) AS issue_names,
+    collect(i.severity) AS issue_severities,
+    collect(p.name) AS product_names,
+    collect(a.name) AS assigned_agents,
+    collect(ka.title) AS knowledge_articles
+"""
+
+
+if __name__ == "__main__":
+    question = "summarise customer Asha Sharma's support situation"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category == "customer_summary":
+        print("Cypher query shape for customer summary:")
+        print(build_customer_summary_query())
+        print()
+        print("Expected parameter:")
+        print({"customer_name": "Asha Sharma"})
+    else:
+        print("This script currently only defines the customer_summary query shape.")
+```
+
+Then press: Ctrl+D
+
+# Step 71 — Run the customer_summary query-shape script
+
+```bash
+python customer_summary_query.py
+```
+
+# Step 72 — Create the live customer_summary retrieval script
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee customer_summary_live.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from retrieval_planner import classify_question
+from customer_summary_query import build_customer_summary_query
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+
+if __name__ == "__main__":
+    question = "summarise customer Asha Sharma's support situation"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category != "customer_summary":
+        print("This script currently runs only the customer_summary retrieval path.")
+    else:
+        query = build_customer_summary_query()
+        params = {"customer_name": "Asha Sharma"}
+
+        with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+            records, summary, keys = driver.execute_query(
+                query,
+                params,
+                database_=NEO4J_DATABASE
+            )
+
+            print("Live customer summary retrieval results:")
+            for record in records:
+                print("-" * 80)
+                print(f"Customer: {record['customer_id']} - {record['customer_name']}")
+                print(f"Tickets: {record['ticket_ids']}")
+                print(f"Issues: {record['issue_names']}")
+                print(f"Issue severities: {record['issue_severities']}")
+                print(f"Products: {record['product_names']}")
+                print(f"Assigned agents: {record['assigned_agents']}")
+                print(f"Knowledge articles: {record['knowledge_articles']}")
+```
+
+Then press: Ctrl+D
+
+# Step 73 — Run the live customer_summary retrieval script
+
+```python
+python customer_summary_live.py
+```
+
+# Step 74 — Add knowledge article content to customer_summary_query.py
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee customer_summary_query.py
+```
+
+Now paste this exact code:
+
+```python
+from retrieval_planner import classify_question
+
+
+def build_customer_summary_query():
+    return """
+MATCH (c:Customer)
+WHERE c.name = $customer_name
+OPTIONAL MATCH (c)-[:RAISED]->(t:Ticket)
+OPTIONAL MATCH (t)-[:HAS_ISSUE]->(i:Issue)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+OPTIONAL MATCH (ka:KnowledgeArticle)-[:SOLVES]->(i)
+RETURN
+    c.customerId AS customer_id,
+    c.name AS customer_name,
+    collect(t.ticketId) AS ticket_ids,
+    collect(i.name) AS issue_names,
+    collect(i.severity) AS issue_severities,
+    collect(p.name) AS product_names,
+    collect(a.name) AS assigned_agents,
+    collect(ka.title) AS knowledge_articles,
+    collect(ka.content) AS knowledge_article_contents
+"""
+
+
+if __name__ == "__main__":
+    question = "summarise customer Asha Sharma's support situation"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category == "customer_summary":
+        print("Cypher query shape for customer summary:")
+        print(build_customer_summary_query())
+        print()
+        print("Expected parameter:")
+        print({"customer_name": "Asha Sharma"})
+    else:
+        print("This script currently only defines the customer_summary query shape.")
+```
+
+# Step 75 — Update customer_summary_live.py to print article content
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee customer_summary_live.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from retrieval_planner import classify_question
+from customer_summary_query import build_customer_summary_query
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+
+if __name__ == "__main__":
+    question = "summarise customer Asha Sharma's support situation"
+    category = classify_question(question)
+
+    print("Question:")
+    print(question)
+    print()
+    print("Category:")
+    print(category)
+    print()
+
+    if category != "customer_summary":
+        print("This script currently runs only the customer_summary retrieval path.")
+    else:
+        query = build_customer_summary_query()
+        params = {"customer_name": "Asha Sharma"}
+
+        with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+            records, summary, keys = driver.execute_query(
+                query,
+                params,
+                database_=NEO4J_DATABASE
+            )
+
+            print("Live customer summary retrieval results:")
+            for record in records:
+                print("-" * 80)
+                print(f"Customer: {record['customer_id']} - {record['customer_name']}")
+                print(f"Tickets: {record['ticket_ids']}")
+                print(f"Issues: {record['issue_names']}")
+                print(f"Issue severities: {record['issue_severities']}")
+                print(f"Products: {record['product_names']}")
+                print(f"Assigned agents: {record['assigned_agents']}")
+                print(f"Knowledge articles: {record['knowledge_articles']}")
+                print(f"Knowledge article contents: {record['knowledge_article_contents']}")
+```
+
+Then press: Ctrl+D
+
+# Step 76 — Run the updated live customer_summary retrieval script
+
+```bash
+python customer_summary_live.py
+```
+
+
+# Step 77 — Create the first customer_summary + LM Studio answer script
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee ask_customer_summary_once.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from retrieval_planner import classify_question
+from customer_summary_query import build_customer_summary_query
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+
+def fetch_customer_summary_context(question):
+    category = classify_question(question)
+
+    if category != "customer_summary":
+        return {
+            "category": category,
+            "customer_name": None,
+            "records": []
+        }
+
+    customer_name = "Asha Sharma"
+
+    query = build_customer_summary_query()
+    params = {"customer_name": customer_name}
+
+    with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+        records, summary, keys = driver.execute_query(
+            query,
+            params,
+            database_=NEO4J_DATABASE
+        )
+
+    return {
+        "category": category,
+        "customer_name": customer_name,
+        "records": records
+    }
+
+
+def build_context_text(question, retrieval_result):
+    category = retrieval_result["category"]
+    customer_name = retrieval_result["customer_name"]
+    records = retrieval_result["records"]
+
+    lines = []
+    lines.append(f"User question: {question}")
+    lines.append(f"Planner category: {category}")
+    lines.append(f"Requested customer name: {customer_name}")
+    lines.append("")
+
+    if not records:
+        lines.append("No customer summary graph retrieval context was found.")
+        return "\n".join(lines)
+
+    lines.append("Retrieved SupportGraph context:")
+
+    for record in records:
+        lines.append("-" * 60)
+        lines.append(f"Customer: {record['customer_id']} - {record['customer_name']}")
+        lines.append(f"Tickets: {record['ticket_ids']}")
+        lines.append(f"Issues: {record['issue_names']}")
+        lines.append(f"Issue severities: {record['issue_severities']}")
+        lines.append(f"Products: {record['product_names']}")
+        lines.append(f"Assigned agents: {record['assigned_agents']}")
+        lines.append(f"Knowledge articles: {record['knowledge_articles']}")
+        lines.append(f"Knowledge article contents: {record['knowledge_article_contents']}")
+
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    question = "summarise customer Asha Sharma's support situation"
+
+    retrieval_result = fetch_customer_summary_context(question)
+    context_text = build_context_text(question, retrieval_result)
+
+    print("Retrieved context sent to LM Studio:")
+    print(context_text)
+    print()
+    print("=" * 80)
+    print()
+
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a support assistant for the SupportGraph Intelligence Platform. "
+                    "Answer only from the retrieved graph context provided. "
+                    "Summarise the customer's current support situation clearly and concisely."
+                )
+            },
+            {
+                "role": "user",
+                "content": context_text
+            }
+        ],
+        temperature=0.2,
+        max_tokens=300
+    )
+
+    print("LM Studio answer:")
+    print(response.choices[0].message.content.strip())
+```
+
+Then press: Ctrl+D
+
+# Step 78 — Run the first customer_summary + LM Studio answer script
+
+```bash
+python ask_customer_summary_once.py
+```
+
+# Step 79 — Overwrite ask_customer_summary_once.py with the dynamic version
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee ask_customer_summary_once.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from retrieval_planner import classify_question
+from customer_summary_query import build_customer_summary_query
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+SUPPORTED_CUSTOMERS = [
+    "Asha Sharma",
+    "Ravi Mehta"
+]
+
+
+def infer_customer_name(question):
+    q = question.lower()
+
+    if "asha sharma" in q:
+        return "Asha Sharma"
+    elif "ravi mehta" in q:
+        return "Ravi Mehta"
+    else:
+        return None
+
+
+def fetch_customer_summary_context(question):
+    category = classify_question(question)
+
+    if category != "customer_summary":
+        return {
+            "category": category,
+            "customer_name": None,
+            "records": []
+        }
+
+    customer_name = infer_customer_name(question)
+
+    if customer_name is None:
+        return {
+            "category": category,
+            "customer_name": None,
+            "records": []
+        }
+
+    query = build_customer_summary_query()
+    params = {"customer_name": customer_name}
+
+    with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+        records, summary, keys = driver.execute_query(
+            query,
+            params,
+            database_=NEO4J_DATABASE
+        )
+
+    return {
+        "category": category,
+        "customer_name": customer_name,
+        "records": records
+    }
+
+
+def build_context_text(question, retrieval_result):
+    category = retrieval_result["category"]
+    customer_name = retrieval_result["customer_name"]
+    records = retrieval_result["records"]
+
+    lines = []
+    lines.append(f"User question: {question}")
+    lines.append(f"Planner category: {category}")
+    lines.append(f"Requested customer name: {customer_name}")
+    lines.append("")
+
+    if not records:
+        lines.append("No customer summary graph retrieval context was found.")
+        return "\n".join(lines)
+
+    lines.append("Retrieved SupportGraph context:")
+
+    for record in records:
+        lines.append("-" * 60)
+        lines.append(f"Customer: {record['customer_id']} - {record['customer_name']}")
+        lines.append(f"Tickets: {record['ticket_ids']}")
+        lines.append(f"Issues: {record['issue_names']}")
+        lines.append(f"Issue severities: {record['issue_severities']}")
+        lines.append(f"Products: {record['product_names']}")
+        lines.append(f"Assigned agents: {record['assigned_agents']}")
+        lines.append(f"Knowledge articles: {record['knowledge_articles']}")
+        lines.append(f"Knowledge article contents: {record['knowledge_article_contents']}")
+
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    question = input("Enter your customer summary question: ").strip()
+
+    retrieval_result = fetch_customer_summary_context(question)
+    category = retrieval_result["category"]
+    customer_name = retrieval_result["customer_name"]
+    records = retrieval_result["records"]
+
+    if category != "customer_summary":
+        print()
+        print("This script currently supports customer-summary questions only.")
+        print("Supported customers:")
+        for item in SUPPORTED_CUSTOMERS:
+            print("- " + item)
+
+    elif customer_name is None:
+        print()
+        print("I could not map your question to a currently supported customer.")
+        print("Supported customers:")
+        for item in SUPPORTED_CUSTOMERS:
+            print("- " + item)
+
+    elif not records:
+        print()
+        print("The question mapped to a supported customer, but no graph context was found.")
+        print("Customer name:", customer_name)
+
+    else:
+        context_text = build_context_text(question, retrieval_result)
+
+        print()
+        print("Retrieved context sent to LM Studio:")
+        print(context_text)
+        print()
+        print("=" * 80)
+```
+
+Then press: Ctrl+D
+
+# Step 80 — Run the dynamic customer-summary script with Ravi Mehta
+
+```bash
+python ask_customer_summary_once.py
+```
+
+When it prompts: Enter your customer summary question:
+
+please type exactly:
+
+```text
+summarise customer Ravi Mehta's support situation
+```
+
+
+# Step 81 — Create the unified interactive Ask SupportGraph script
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee ask_supportgraph_unified.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from retrieval_planner import classify_question
+from issue_retrieval_query import build_issue_troubleshooting_query
+from customer_summary_query import build_customer_summary_query
+from issue_retrieval_live import infer_issue_name
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+SUPPORTED_ISSUES = [
+    "Login Failure",
+    "Payment Failure",
+    "App Crash"
+]
+
+SUPPORTED_CUSTOMERS = [
+    "Asha Sharma",
+    "Ravi Mehta"
+]
+
+
+def infer_customer_name(question):
+    q = question.lower()
+
+    if "asha sharma" in q:
+        return "Asha Sharma"
+    elif "ravi mehta" in q:
+        return "Ravi Mehta"
+    else:
+        return None
+
+
+def fetch_issue_context(question):
+    issue_name = infer_issue_name(question)
+
+    if issue_name is None:
+        return {
+            "kind": "issue_troubleshooting",
+            "target_name": None,
+            "records": []
+        }
+
+    query = build_issue_troubleshooting_query()
+    params = {"issue_name": issue_name}
+
+    with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+        records, summary, keys = driver.execute_query(
+            query,
+            params,
+            database_=NEO4J_DATABASE
+        )
+
+    return {
+        "kind": "issue_troubleshooting",
+        "target_name": issue_name,
+        "records": records
+    }
+
+
+def fetch_customer_context(question):
+    customer_name = infer_customer_name(question)
+
+    if customer_name is None:
+        return {
+            "kind": "customer_summary",
+            "target_name": None,
+            "records": []
+        }
+
+    query = build_customer_summary_query()
+    params = {"customer_name": customer_name}
+
+    with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+        records, summary, keys = driver.execute_query(
+            query,
+            params,
+            database_=NEO4J_DATABASE
+        )
+
+    return {
+        "kind": "customer_summary",
+        "target_name": customer_name,
+        "records": records
+    }
+
+
+def build_issue_context_text(question, retrieval_result):
+    issue_name = retrieval_result["target_name"]
+    records = retrieval_result["records"]
+
+    lines = []
+    lines.append(f"User question: {question}")
+    lines.append("Planner category: issue_troubleshooting")
+    lines.append(f"Inferred issue name: {issue_name}")
+    lines.append("")
+
+    if not records:
+        lines.append("No graph retrieval context was found.")
+        return "\n".join(lines)
+
+    lines.append("Retrieved SupportGraph context:")
+
+    for record in records:
+        lines.append("-" * 60)
+        lines.append(
+            f"Issue: {record['issue_id']} - {record['issue_name']} ({record['issue_severity']})"
+        )
+        lines.append(f"Tickets: {record['ticket_ids']}")
+        lines.append(f"Customers: {record['customer_names']}")
+        lines.append(f"Products: {record['product_names']}")
+        lines.append(f"Assigned agents: {record['assigned_agents']}")
+        lines.append(f"Knowledge articles: {record['knowledge_articles']}")
+        lines.append(f"Knowledge article contents: {record['knowledge_article_contents']}")
+
+        if not record["ticket_ids"]:
+            lines.append("Operational note: knowledge exists, but no related ticket context was found.")
+
+    return "\n".join(lines)
+
+
+def build_customer_context_text(question, retrieval_result):
+    customer_name = retrieval_result["target_name"]
+    records = retrieval_result["records"]
+
+    lines = []
+    lines.append(f"User question: {question}")
+    lines.append("Planner category: customer_summary")
+    lines.append(f"Requested customer name: {customer_name}")
+    lines.append("")
+
+    if not records:
+        lines.append("No customer summary graph retrieval context was found.")
+        return "\n".join(lines)
+
+    lines.append("Retrieved SupportGraph context:")
+
+    for record in records:
+        lines.append("-" * 60)
+        lines.append(f"Customer: {record['customer_id']} - {record['customer_name']}")
+        lines.append(f"Tickets: {record['ticket_ids']}")
+        lines.append(f"Issues: {record['issue_names']}")
+        lines.append(f"Issue severities: {record['issue_severities']}")
+        lines.append(f"Products: {record['product_names']}")
+        lines.append(f"Assigned agents: {record['assigned_agents']}")
+        lines.append(f"Knowledge articles: {record['knowledge_articles']}")
+        lines.append(f"Knowledge article contents: {record['knowledge_article_contents']}")
+
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    question = input("Enter your Ask SupportGraph question: ").strip()
+    category = classify_question(question)
+
+    if category == "issue_troubleshooting":
+        retrieval_result = fetch_issue_context(question)
+
+        if retrieval_result["target_name"] is None:
+            print()
+            print("I could not map your question to a currently supported issue.")
+            print("Supported issues:")
+            for item in SUPPORTED_ISSUES:
+                print("- " + item)
+
+        elif not retrieval_result["records"]:
+            print()
+            print("The question mapped to a supported issue, but no graph context was found.")
+            print("Issue name:", retrieval_result["target_name"])
+
+        else:
+            context_text = build_issue_context_text(question, retrieval_result)
+
+            print()
+            print("Retrieved context sent to LM Studio:")
+            print(context_text)
+            print()
+            print("=" * 80)
+            print()
+
+            response = LMSTUDIO_CLIENT.chat.completions.create(
+                model=LMSTUDIO_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a support assistant for the SupportGraph Intelligence Platform. "
+                            "Answer only from the retrieved graph context provided. "
+                            "If operational context is missing, say so clearly. "
+                            "If knowledge article contents are provided, use them to explain causes or recommended actions."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": context_text
+                    }
+                ],
+                temperature=0.2,
+                max_tokens=300
+            )
+
+            print("LM Studio answer:")
+            print(response.choices[0].message.content.strip())
+
+    elif category == "customer_summary":
+        retrieval_result = fetch_customer_context(question)
+
+        if retrieval_result["target_name"] is None:
+            print()
+            print("I could not map your question to a currently supported customer.")
+            print("Supported customers:")
+            for item in SUPPORTED_CUSTOMERS:
+                print("- " + item)
+
+        elif not retrieval_result["records"]:
+            print()
+            print("The question mapped to a supported customer, but no graph context was found.")
+            print("Customer name:", retrieval_result["target_name"])
+
+        else:
+            context_text = build_customer_context_text(question, retrieval_result)
+
+            print()
+            print("Retrieved context sent to LM Studio:")
+            print(context_text)
+            print()
+            print("=" * 80)
+            print()
+
+            response = LMSTUDIO_CLIENT.chat.completions.create(
+                model=LMSTUDIO_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a support assistant for the SupportGraph Intelligence Platform. "
+                            "Answer only from the retrieved graph context provided. "
+                            "Summarise the customer's current support situation clearly and concisely."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": context_text
+                    }
+                ],
+                temperature=0.2,
+                max_tokens=300
+            )
+
+            print("LM Studio answer:")
+            print(response.choices[0].message.content.strip())
+
+    else:
+        print()
+        print("This unified script currently supports two planner categories only:")
+        print("- issue_troubleshooting")
+        print("- customer_summary")
+```
+
+Then press: Ctrl+D
+
+# Step 82 — Run the unified Ask SupportGraph script with an issue question
+
+```bash
+python ask_supportgraph_unified.py
+```
+
+When it prompts: Enter your Ask SupportGraph question:
+
+Please type exactly:
+
+```text
+why are payments failing?
+```
+
+# Step 83 — Run the unified script with a customer-summary question
+
+```bash
+python ask_supportgraph_unified.py
+```
+
+When it prompts: Enter your Ask SupportGraph question:
+
+Please type exactly:
+
+```text
+summarise customer Ravi Mehta's support situation
+```
