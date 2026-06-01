@@ -4356,3 +4356,386 @@ RETURN
 
   questionSummaries AS day4RetrievalValidationSummary;
 ```
+
+# This finishes Day 4. Now, onto Day 5
+
+# Step 1: LMStudio install
+
+You can download LMStudio using https://lmstudio.ai/download
+
+The file will get downloaded by default in /home/student/Downloads/LM-Studio-0.4.15-2-x64.deb if default firefox settings are being used. If not, then check where the firefox is downloading.
+
+# Step 2 — Verify the downloaded .deb installer file
+
+```shell
+ls -lh /home/student/Downloads/LM-Studio-0.4.15-2-x64.deb && dpkg-deb -I /home/student/Downloads/LM-Studio-0.4.15-2-x64.deb | head -40
+```
+
+# Step 3 — Verify Ubuntu machine architecture
+
+```shell
+dpkg --print-architecture
+```
+
+# Step 4 — Install LM Studio using APT
+
+```shell
+apt install /home/student/Downloads/LM-Studio-0.4.15-2-x64.deb
+```
+
+# Step 5 — Verify LM Studio installation and available commands
+
+```shell
+dpkg -l | grep lm-studio
+```
+
+# Step 6 — Check LM Studio local server status
+
+```shell
+lms server status
+```
+
+# Step 7 — Inspect installed LM Studio files and look for CLI binaries
+
+```shell
+dpkg -L lm-studio | grep -E '/bin/|/opt/|lms|lm-studio' | head -120
+```
+
+# Step 8 — Search the installed LM Studio package for actual executable names
+
+```shell
+dpkg -L lm-studio | grep -E '(^/usr/bin/|^/opt/LM-Studio/(lm-studio|lms)$|/lms$|/lm-studio$)'
+```
+
+# Step 9 — Search the installed package for lms and llmster
+
+```shell
+dpkg -L lm-studio | grep -Ei '(^/usr/bin/|/lms$|/lms[^/]*$|/llmster$|/llmster[^/]*$|cli|bin|lm-studio$)'
+```
+
+# Step 11 — Open LM Studio from the graphical desktop
+
+```shell
+lm-studio
+```
+
+# Step 12 — Verify that lms is now available from the CLI path
+
+Open a normal terminal as the GUI user, not a root terminal.
+
+```shell
+which lms && lms ls
+```
+
+# Step 13 — Load the local LLM into memory
+
+```shell
+lms load nvidia/nemotron-3-nano-4b
+```
+
+# Step 14 — Start the LM Studio local HTTP server
+
+```bash
+lms server start
+```
+
+# Step 15 — Confirm LM Studio server status
+
+```bash
+lms server status
+```
+
+# Step 16 — Verify that the LM Studio HTTP server is reachable
+
+```bash
+curl -i http://localhost:1234
+```
+
+# Step 17 — Verify OpenAI-compatible model listing endpoint
+
+```bash
+curl http://localhost:1234/v1/models
+```
+
+# Step 18 — Test a minimal OpenAI-compatible chat completion
+
+```bash
+curl http://localhost:1234/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "nvidia/nemotron-3-nano-4b",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a concise assistant for a classroom lab validation."
+      },
+      {
+        "role": "user",
+        "content": "Reply with exactly one sentence confirming that the local LM Studio model is working."
+      }
+    ],
+    "temperature": 0.2,
+    "max_tokens": 80
+  }'
+```
+
+# Step 19 — Check whether a Python virtual environment already exists
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && pwd && ls -la && find . -maxdepth 2 -type f -path "*/bin/activate" -print
+```
+
+# Step 19A — Check whether Python and pip are available
+
+```bash
+python3 --version && python3 -m pip --version
+```
+
+# Step 19B — Install Python runtime and pip prerequisites
+
+```bash
+# If running as root
+apt install -y python3-full python3-pip python3-pip-whl
+
+# If running as student
+sudo apt install -y python3-full python3-pip python3-pip-whl
+```
+
+# Step 19C — Verify Python and pip after installation
+
+```shell
+python3 --version
+python3 -m pip --version
+```
+
+# Step 20 — Create the Day 5 GraphRAG API workspace
+
+```shell
+sudo mkdir -p /opt/supportgraph/06_graph_rag_api && \
+sudo chown -R student:student /opt/supportgraph/06_graph_rag_api && \
+ls -ld /opt/supportgraph/06_graph_rag_api
+```
+
+# Step 21 — Create a fresh Python virtual environment
+
+```shell
+cd /opt/supportgraph/06_graph_rag_api && \
+python3 -m venv .venv && \
+ls -ld .venv && \
+ls -l .venv/bin/activate
+```
+
+# Step 22 — Activate the fresh virtual environment and verify Python/pip
+
+```shell
+cd /opt/supportgraph/06_graph_rag_api && \
+source .venv/bin/activate && \
+which python && \
+python --version && \
+python -m pip --version
+```
+
+# Step 23 — Check whether the OpenAI Python package is already installed
+
+Please run this while your prompt starts with (.venv):
+
+```shell
+python -m pip show openai
+```
+
+# Step 24 — Install the OpenAI Python SDK inside .venv
+
+```shell
+python -m pip install openai
+```
+
+# Step 25 — Verify the OpenAI Python SDK installation
+
+```shell
+python -m pip show openai
+```
+
+# Step 26 — Create a Python smoke-test script for LM Studio
+
+```shell
+cd /opt/supportgraph/06_graph_rag_api && \
+tee test_lmstudio_chat.py
+```
+
+After running it, paste the following Python code into the terminal:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+response = client.chat.completions.create(
+    model="nvidia/nemotron-3-nano-4b",
+    messages=[
+        {
+            "role": "system",
+            "content": "You are a concise assistant validating a local GraphRAG classroom lab."
+        },
+        {
+            "role": "user",
+            "content": "Reply with one sentence confirming that Python can call the local LM Studio model."
+        }
+    ],
+    temperature=0.2,
+    max_tokens=80
+)
+
+print(response.choices[0].message.content.strip())
+```
+
+Then finish the input with Ctrl+D.
+
+# Step 27 — Run the Python LM Studio smoke test
+
+```shell
+python test_lmstudio_chat.py
+```
+
+# Step 28 — Capture Python dependencies in requirements.txt
+
+```shell
+cd /opt/supportgraph/06_graph_rag_api && \
+python -m pip freeze > requirements.txt && \
+cat requirements.txt
+```
+
+# Step 29 — Check whether the Neo4j Python Driver is installed
+
+```shell
+python -m pip show neo4j
+```
+
+# Step 30 — Install the Neo4j Python Driver inside .venv
+
+```shell
+python -m pip install neo4j
+```
+
+# Step 31 — Verify the Neo4j Python Driver installation
+
+```shell
+python -m pip show neo4j
+```
+
+# Step 32 — Create a Neo4j Python connection smoke-test script
+
+```shell
+cd /opt/supportgraph/06_graph_rag_api && \
+tee test_neo4j_connection.py
+```
+
+Now paste this Python code:
+
+```python
+from neo4j import GraphDatabase
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+    records, summary, keys = driver.execute_query(
+        "RETURN 'SupportGraph Neo4j Python connection is working' AS message",
+        database_=NEO4J_DATABASE
+    )
+
+    for record in records:
+        print(record["message"])
+```
+
+Then finish input with: Ctrl+D
+
+# Step 33 — Run the Neo4j Python connection smoke test
+
+```shell
+python test_neo4j_connection.py
+```
+
+# Step 34 — Update requirements.txt after installing Neo4j Driver
+
+```shell
+cd /opt/supportgraph/06_graph_rag_api && \
+python -m pip freeze > requirements.txt && \
+cat requirements.txt
+```
+
+# Step 35 — Create a SupportGraph data read smoke-test script
+
+```shell
+cd /opt/supportgraph/06_graph_rag_api && \
+tee test_supportgraph_read.py
+```
+
+# Step 36 — Run the SupportGraph data read smoke test
+
+```shell
+python test_supportgraph_read.py
+```
+
+# Step 37 — Create a GraphRAG readiness read script
+
+```shell
+cd /opt/supportgraph/06_graph_rag_api && \
+tee test_graphrag_readiness.py
+```
+
+Now paste this Python code:
+
+```python
+from neo4j import GraphDatabase
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+QUERY = """
+MATCH (dc:DocumentChunk)-[:PART_OF]->(ka:KnowledgeArticle)-[:SOLVES]->(i:Issue)
+OPTIONAL MATCH (t:Ticket)-[:HAS_ISSUE]->(i)
+OPTIONAL MATCH (c:Customer)-[:RAISED]->(t)
+OPTIONAL MATCH (t)-[:ABOUT]->(p:Product)
+OPTIONAL MATCH (t)-[:ASSIGNED_TO]->(a:Agent)
+RETURN
+    dc.chunkId AS chunkId,
+    dc.text AS chunkText,
+    ka.articleId AS articleId,
+    ka.title AS articleTitle,
+    i.issueId AS issueId,
+    i.name AS issueName,
+    i.severity AS issueSeverity,
+    collect(DISTINCT t.ticketId) AS relatedTicketIds,
+    collect(DISTINCT c.name) AS relatedCustomers,
+    collect(DISTINCT p.name) AS relatedProducts,
+    collect(DISTINCT a.name) AS assignedAgents
+ORDER BY
+    issueName,
+    chunkId
+"""
+
+with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+    records, summary, keys = driver.execute_query(
+        QUERY,
+        database_=NEO4J_DATABASE
+    )
+
+    print("GraphRAG readiness context:")
+    for record in records:
+        print("-" * 80)
+        print(f"Chunk: {record['chunkId']}")
+        print(f"Text: {record['chunkText']}")
+        print(f"Article: {record['articleId']} - {record['articleTitle']}")
+        print(f"Issue: {record['issueId']} - {record['issueName']} ({record['issueSeverity']})")
+        print(f"Tickets: {record['relatedTicketIds']}")
+        print(f"Customers: {record['relatedCustomers']}")
+        print(f"Products: {record['relatedProducts']}")
+        print(f"Assigned agents: {record['assignedAgents']}")
+```
+
+Then press: Ctrl+D
