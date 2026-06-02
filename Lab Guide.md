@@ -7200,3 +7200,1379 @@ Please type exactly:
 ```text
 summarise customer Ravi Mehta's support situation
 ```
+
+# Step 84 — Check the current Neo4j edition from your environment
+
+Before we write the text-to-Cypher code, we need to confirm one thing from your actual environment:
+
+> Are you running Neo4j Community Edition or Neo4j Enterprise Edition?
+
+```bash
+docker exec supportgraph-neo4j cypher-shell -u neo4j -p 'SupportGraph@123' "CALL dbms.components() YIELD name, versions, edition RETURN name, versions, edition;"
+```
+
+We already consulted the official Neo4j user-management documentation and confirmed that Community Edition cannot provide the restricted-role safety layer we wanted.
+
+# Step 85 — Create the first Cypher safety validator
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee cypher_safety.py
+```
+
+Now paste this exact code:
+
+```python
+BLOCKED_KEYWORDS = [
+    "CREATE",
+    "MERGE",
+    "DELETE",
+    "DETACH",
+    "SET",
+    "REMOVE",
+    "DROP",
+    "LOAD CSV",
+    "ALTER",
+    "GRANT",
+    "DENY",
+    "REVOKE",
+    "CREATE USER",
+    "DROP USER",
+    "SHOW USERS",
+    "SHOW USER",
+    "SHOW PRIVILEGES",
+    "SHOW ROLES",
+    "CALL DBMS",
+    "CALL GDS",
+    "CALL APOC"
+]
+
+
+def normalise_cypher(query):
+    return " ".join(query.upper().split())
+
+
+def has_blocked_keyword(query):
+    q = normalise_cypher(query)
+
+    for keyword in BLOCKED_KEYWORDS:
+        if keyword in q:
+            return True, keyword
+
+    return False, None
+
+
+def has_limit(query):
+    q = normalise_cypher(query)
+    return " LIMIT " in (" " + q + " ")
+
+
+def looks_like_read_query(query):
+    q = normalise_cypher(query)
+
+    allowed_start = (
+        q.startswith("MATCH ")
+        or q.startswith("OPTIONAL MATCH ")
+        or q.startswith("WITH ")
+    )
+
+    return allowed_start and " RETURN " in (" " + q + " ")
+
+
+def validate_cypher(query):
+    blocked, keyword = has_blocked_keyword(query)
+
+    if blocked:
+        return {
+            "safe": False,
+            "reason": "Blocked keyword found: " + keyword
+        }
+
+    if not looks_like_read_query(query):
+        return {
+            "safe": False,
+            "reason": "Query does not look like a read-only MATCH/WITH/RETURN query."
+        }
+
+    if not has_limit(query):
+        return {
+            "safe": False,
+            "reason": "Query is missing LIMIT."
+        }
+
+    return {
+        "safe": True,
+        "reason": "Query passed basic read-only safety checks."
+    }
+
+
+if __name__ == "__main__":
+    test_queries = [
+        "MATCH (a:Agent) RETURN a.name LIMIT 5",
+        "MATCH (n) RETURN n",
+        "CREATE (n) RETURN n LIMIT 0",
+        "MATCH (n) SET n.x = 1 RETURN n LIMIT 1",
+        "SHOW USERS",
+        "MATCH (a:Agent) WHERE toLower(a.name) CONTAINS 'rajat' RETURN a.name, a.team LIMIT 5"
+    ]
+
+    print("Cypher safety validator test:")
+    for query in test_queries:
+        result = validate_cypher(query)
+        print("-" * 80)
+        print("Query:")
+        print(query)
+        print("Validation result:")
+        print(result)
+```
+
+Then press: Ctrl+D
+
+Run cypher_safety.py and check that it accepts safe read queries and rejects unsafe ones.
+
+# Step 86 — Run the Cypher safety validator
+
+```bash
+python cypher_safety.py
+```
+
+Now, create the first LLM-generated Cypher prototype
+
+# Step 87 — Create the first LLM-generated Cypher prototype
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee llm_generate_cypher_once.py
+```
+
+Now paste this exact code:
+
+```python
+from openai import OpenAI
+
+from cypher_safety import validate_cypher
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+
+GRAPH_SCHEMA = """
+You are working with a Neo4j customer support graph.
+
+Node labels and useful properties:
+- Customer: customerId, name, region, segment
+- Ticket: ticketId, title, issueType, priority, status, createdDate
+- Product: productId, name, category, platform
+- Agent: agentId, name, team, location
+- Issue: issueId, name, category, severity
+- KnowledgeArticle: articleId, title, issueType, content, source
+- DocumentChunk: chunkId, text, chunkOrder, articleId, source
+
+Relationships:
+- (:Customer)-[:RAISED]->(:Ticket)
+- (:Ticket)-[:ABOUT]->(:Product)
+- (:Ticket)-[:ASSIGNED_TO]->(:Agent)
+- (:Ticket)-[:HAS_ISSUE]->(:Issue)
+- (:KnowledgeArticle)-[:SOLVES]->(:Issue)
+- (:DocumentChunk)-[:PART_OF]->(:KnowledgeArticle)
+
+Important rules:
+- Generate only one Cypher query.
+- The query must be read-only.
+- Use MATCH / OPTIONAL MATCH / WHERE / RETURN / ORDER BY / LIMIT only.
+- Do not use CREATE, MERGE, DELETE, DETACH, SET, REMOVE, DROP, ALTER, GRANT, DENY, REVOKE, LOAD CSV, SHOW, CALL, or admin commands.
+- Always include LIMIT 10 or smaller.
+- Return useful properties, not full nodes.
+- Do not wrap the query in markdown code fences.
+"""
+
+
+def clean_generated_cypher(text):
+    cleaned = text.strip()
+
+    if cleaned.startswith("```"):
+        cleaned = cleaned.replace("```cypher", "")
+        cleaned = cleaned.replace("```", "")
+        cleaned = cleaned.strip()
+
+    return cleaned
+
+
+if __name__ == "__main__":
+    question = "who is rajat?"
+
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You generate safe read-only Neo4j Cypher queries. "
+                    "Return only the Cypher query text and nothing else."
+                )
+            },
+            {
+                "role": "user",
+                "content": GRAPH_SCHEMA + "\n\nUser question:\n" + question
+            }
+        ],
+        temperature=0.1,
+        max_tokens=250
+    )
+
+    generated_cypher = clean_generated_cypher(
+        response.choices[0].message.content
+    )
+
+    print("User question:")
+    print(question)
+    print()
+    print("Generated Cypher:")
+    print(generated_cypher)
+    print()
+    print("Safety validation:")
+    print(validate_cypher(generated_cypher))
+```
+
+Then press: Ctrl+D
+
+# Step 88 — Run the LLM-generated Cypher prototype
+
+```bash
+python llm_generate_cypher_once.py
+```
+
+Create a script that generates Cypher, validates it, and executes it only if it passes validation.
+
+# Step 89 — Create the first validated LLM-Cypher execution script
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee llm_cypher_execute_once.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from cypher_safety import validate_cypher
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+
+GRAPH_SCHEMA = """
+You are working with a Neo4j customer support graph.
+
+Node labels and useful properties:
+- Customer: customerId, name, region, segment
+- Ticket: ticketId, title, issueType, priority, status, createdDate
+- Product: productId, name, category, platform
+- Agent: agentId, name, team, location
+- Issue: issueId, name, category, severity
+- KnowledgeArticle: articleId, title, issueType, content, source
+- DocumentChunk: chunkId, text, chunkOrder, articleId, source
+
+Relationships:
+- (:Customer)-[:RAISED]->(:Ticket)
+- (:Ticket)-[:ABOUT]->(:Product)
+- (:Ticket)-[:ASSIGNED_TO]->(:Agent)
+- (:Ticket)-[:HAS_ISSUE]->(:Issue)
+- (:KnowledgeArticle)-[:SOLVES]->(:Issue)
+- (:DocumentChunk)-[:PART_OF]->(:KnowledgeArticle)
+
+Important rules:
+- Generate only one Cypher query.
+- The query must be read-only.
+- Use MATCH / OPTIONAL MATCH / WHERE / RETURN / ORDER BY / LIMIT only.
+- Do not use CREATE, MERGE, DELETE, DETACH, SET, REMOVE, DROP, ALTER, GRANT, DENY, REVOKE, LOAD CSV, SHOW, CALL, or admin commands.
+- Always include LIMIT 10 or smaller.
+- Return useful properties, not full nodes.
+- Do not wrap the query in markdown code fences.
+"""
+
+
+def clean_generated_cypher(text):
+    cleaned = text.strip()
+
+    if cleaned.startswith("```"):
+        cleaned = cleaned.replace("```cypher", "")
+        cleaned = cleaned.replace("```", "")
+        cleaned = cleaned.strip()
+
+    return cleaned
+
+
+def generate_cypher(question):
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You generate safe read-only Neo4j Cypher queries. "
+                    "Return only the Cypher query text and nothing else."
+                )
+            },
+            {
+                "role": "user",
+                "content": GRAPH_SCHEMA + "\n\nUser question:\n" + question
+            }
+        ],
+        temperature=0.1,
+        max_tokens=250
+    )
+
+    return clean_generated_cypher(response.choices[0].message.content)
+
+
+if __name__ == "__main__":
+    question = "who is rajat?"
+
+    generated_cypher = generate_cypher(question)
+    validation = validate_cypher(generated_cypher)
+
+    print("User question:")
+    print(question)
+    print()
+    print("Generated Cypher:")
+    print(generated_cypher)
+    print()
+    print("Safety validation:")
+    print(validation)
+    print()
+
+    if not validation["safe"]:
+        print("Query was not executed because it failed safety validation.")
+    else:
+        with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+            records, summary, keys = driver.execute_query(
+                generated_cypher,
+                database_=NEO4J_DATABASE
+            )
+
+        print("Neo4j returned rows:")
+        print(len(records))
+        print()
+
+        for record in records:
+            print(record.data())
+```
+
+Then press: Ctrl+D
+
+Run the validated LLM-Cypher execution script and inspect the Neo4j rows returned.
+
+# Step 90 — Run the validated LLM-Cypher execution script
+
+```bash
+python llm_cypher_execute_once.py
+```
+
+Update the LLM prompt inside llm_cypher_execute_once.py so that for short person/customer/agent names, it prefers partial case-insensitive matching.
+
+# Step 91 — Update the LLM-Cypher prompt for partial case-insensitive name matching
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee llm_cypher_execute_once.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from cypher_safety import validate_cypher
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+
+GRAPH_SCHEMA = """
+You are working with a Neo4j customer support graph.
+
+Node labels and useful properties:
+- Customer: customerId, name, region, segment
+- Ticket: ticketId, title, issueType, priority, status, createdDate
+- Product: productId, name, category, platform
+- Agent: agentId, name, team, location
+- Issue: issueId, name, category, severity
+- KnowledgeArticle: articleId, title, issueType, content, source
+- DocumentChunk: chunkId, text, chunkOrder, articleId, source
+
+Relationships:
+- (:Customer)-[:RAISED]->(:Ticket)
+- (:Ticket)-[:ABOUT]->(:Product)
+- (:Ticket)-[:ASSIGNED_TO]->(:Agent)
+- (:Ticket)-[:HAS_ISSUE]->(:Issue)
+- (:KnowledgeArticle)-[:SOLVES]->(:Issue)
+- (:DocumentChunk)-[:PART_OF]->(:KnowledgeArticle)
+
+Important rules:
+- Generate only one Cypher query.
+- The query must be read-only.
+- Use MATCH / OPTIONAL MATCH / WHERE / RETURN / ORDER BY / LIMIT only.
+- Do not use CREATE, MERGE, DELETE, DETACH, SET, REMOVE, DROP, ALTER, GRANT, DENY, REVOKE, LOAD CSV, SHOW, CALL, or admin commands.
+- Always include LIMIT 10 or smaller.
+- Return useful properties, not full nodes.
+- Do not wrap the query in markdown code fences.
+
+Name matching guidance:
+- If the user asks about a short or partial person name, such as "rajat", do not use exact equality.
+- Prefer partial case-insensitive matching with Cypher regular expressions.
+- Example:
+  MATCH (a:Agent)
+  WHERE a.name =~ '(?i).*rajat.*'
+  RETURN a.agentId, a.name, a.team, a.location
+  LIMIT 10
+
+Useful expansion guidance:
+- If the question asks "who is <name>?", first search Agent, Customer, and related Ticket context if useful.
+- For an Agent, include assigned tickets, related issues, related products, and related customers if available.
+"""
+
+
+def clean_generated_cypher(text):
+    cleaned = text.strip()
+
+    if cleaned.startswith("```"):
+        cleaned = cleaned.replace("```cypher", "")
+        cleaned = cleaned.replace("```", "")
+        cleaned = cleaned.strip()
+
+    return cleaned
+
+
+def generate_cypher(question):
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You generate safe read-only Neo4j Cypher queries. "
+                    "Return only the Cypher query text and nothing else."
+                )
+            },
+            {
+                "role": "user",
+                "content": GRAPH_SCHEMA + "\n\nUser question:\n" + question
+            }
+        ],
+        temperature=0.1,
+        max_tokens=300
+    )
+
+    return clean_generated_cypher(response.choices[0].message.content)
+
+
+if __name__ == "__main__":
+    question = "who is rajat?"
+
+    generated_cypher = generate_cypher(question)
+    validation = validate_cypher(generated_cypher)
+
+    print("User question:")
+    print(question)
+    print()
+    print("Generated Cypher:")
+    print(generated_cypher)
+    print()
+    print("Safety validation:")
+    print(validation)
+    print()
+
+    if not validation["safe"]:
+        print("Query was not executed because it failed safety validation.")
+    else:
+        with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+            records, summary, keys = driver.execute_query(
+                generated_cypher,
+                database_=NEO4J_DATABASE
+            )
+
+        print("Neo4j returned rows:")
+        print(len(records))
+        print()
+
+        for record in records:
+            print(record.data())
+```
+
+Then press: Ctrl+D
+
+# Step 92 — Run the updated LLM-Cypher execution script
+
+```bash
+python llm_cypher_execute_once.py
+```
+
+# Step 93 — Simplify the LLM-Cypher prompt for the Rajat test
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee llm_cypher_execute_once.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from cypher_safety import validate_cypher
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+
+GRAPH_SCHEMA = """
+You are working with a Neo4j customer support graph.
+
+Current relevant node label:
+- Agent: agentId, name, team, location
+
+Current relevant relationship context:
+- (:Ticket)-[:ASSIGNED_TO]->(:Agent)
+
+Important safety rules:
+- Generate exactly one Cypher query.
+- Return only the Cypher query text.
+- Do not explain.
+- Do not use markdown.
+- The query must be read-only.
+- The query must include RETURN.
+- The query must include LIMIT 10.
+- Do not use CREATE, MERGE, DELETE, DETACH, SET, REMOVE, DROP, ALTER, GRANT, DENY, REVOKE, LOAD CSV, SHOW, CALL, or admin commands.
+
+For short person-name questions, use partial case-insensitive matching.
+Use this exact style:
+
+MATCH (a:Agent)
+WHERE a.name =~ '(?i).*rajat.*'
+RETURN a.agentId, a.name, a.team, a.location
+LIMIT 10
+"""
+
+
+def clean_generated_cypher(text):
+    cleaned = text.strip()
+
+    if cleaned.startswith("```"):
+        cleaned = cleaned.replace("```cypher", "")
+        cleaned = cleaned.replace("```", "")
+        cleaned = cleaned.strip()
+
+    return cleaned
+
+
+def generate_cypher(question):
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You generate safe read-only Neo4j Cypher. "
+                    "Return only one complete Cypher query and nothing else."
+                )
+            },
+            {
+                "role": "user",
+                "content": GRAPH_SCHEMA + "\n\nUser question:\n" + question
+            }
+        ],
+        temperature=0.0,
+        max_tokens=180
+    )
+
+    return clean_generated_cypher(response.choices[0].message.content)
+
+
+if __name__ == "__main__":
+    question = "who is rajat?"
+
+    generated_cypher = generate_cypher(question)
+    validation = validate_cypher(generated_cypher)
+
+    print("User question:")
+    print(question)
+    print()
+    print("Generated Cypher:")
+    print(generated_cypher)
+    print()
+    print("Safety validation:")
+    print(validation)
+    print()
+
+    if not validation["safe"]:
+        print("Query was not executed because it failed safety validation.")
+    else:
+        with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+            records, summary, keys = driver.execute_query(
+                generated_cypher,
+                database_=NEO4J_DATABASE
+            )
+
+        print("Neo4j returned rows:")
+        print(len(records))
+        print()
+
+        for record in records:
+            print(record.data())
+```
+
+Then press: Ctrl+D
+
+Add the final answer-generation stage after the validated Neo4j rows are returned.
+
+> Right now, the script only prints raw graph rows:
+> ```text
+> {'a.agentId': 'A001', 'a.name': 'Rajat Support', 'a.team': 'L1 Support', 'a.location': 'India'}
+> ```
+> Next, we want:
+> ```text
+> Neo4j rows
+-> LM Studio final answer
+> ```
+
+So the user sees something like:
+
+```text
+Rajat refers to Rajat Support, an L1 Support agent located in India.
+```
+
+This still keeps the answer grounded in retrieved graph rows only.
+
+Lets update llm_cypher_execute_once.py so that after Neo4j returns rows, LM Studio generates the final natural-language answer from those rows.
+
+# Step 94 — Add final answer generation from returned Neo4j rows
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee llm_cypher_execute_once.py
+```
+
+Now paste this exact code:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from cypher_safety import validate_cypher
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+
+GRAPH_SCHEMA = """
+You are working with a Neo4j customer support graph.
+
+Current relevant node label:
+- Agent: agentId, name, team, location
+
+Current relevant relationship context:
+- (:Ticket)-[:ASSIGNED_TO]->(:Agent)
+
+Important safety rules:
+- Generate exactly one Cypher query.
+- Return only the Cypher query text.
+- Do not explain.
+- Do not use markdown.
+- The query must be read-only.
+- The query must include RETURN.
+- The query must include LIMIT 10.
+- Do not use CREATE, MERGE, DELETE, DETACH, SET, REMOVE, DROP, ALTER, GRANT, DENY, REVOKE, LOAD CSV, SHOW, CALL, or admin commands.
+
+For short person-name questions, use partial case-insensitive matching.
+Use this exact style:
+
+MATCH (a:Agent)
+WHERE a.name =~ '(?i).*rajat.*'
+RETURN a.agentId, a.name, a.team, a.location
+LIMIT 10
+"""
+
+
+def clean_generated_cypher(text):
+    cleaned = text.strip()
+
+    if cleaned.startswith("```"):
+        cleaned = cleaned.replace("```cypher", "")
+        cleaned = cleaned.replace("```", "")
+        cleaned = cleaned.strip()
+
+    return cleaned
+
+
+def generate_cypher(question):
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You generate safe read-only Neo4j Cypher. "
+                    "Return only one complete Cypher query and nothing else."
+                )
+            },
+            {
+                "role": "user",
+                "content": GRAPH_SCHEMA + "\n\nUser question:\n" + question
+            }
+        ],
+        temperature=0.0,
+        max_tokens=180
+    )
+
+    return clean_generated_cypher(response.choices[0].message.content)
+
+
+def format_records_as_context(question, generated_cypher, records):
+    lines = []
+    lines.append("User question:")
+    lines.append(question)
+    lines.append("")
+    lines.append("Validated generated Cypher:")
+    lines.append(generated_cypher)
+    lines.append("")
+    lines.append("Neo4j returned rows:")
+
+    if not records:
+        lines.append("No rows were returned.")
+        return "\n".join(lines)
+
+    for index, record in enumerate(records, start=1):
+        lines.append("-" * 60)
+        lines.append("Row " + str(index) + ":")
+        row = record.data()
+
+        for key, value in row.items():
+            lines.append(str(key) + ": " + str(value))
+
+    return "\n".join(lines)
+
+
+def generate_final_answer(question, context_text):
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a support graph assistant. "
+                    "Answer only from the Neo4j rows provided. "
+                    "If the rows do not contain enough information, say what is missing. "
+                    "Keep the answer concise and factual."
+                )
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Original user question:\n"
+                    + question
+                    + "\n\nRetrieved graph context:\n"
+                    + context_text
+                )
+            }
+        ],
+        temperature=0.2,
+        max_tokens=220
+    )
+
+    return response.choices[0].message.content.strip()
+
+
+if __name__ == "__main__":
+    question = "who is rajat?"
+
+    generated_cypher = generate_cypher(question)
+    validation = validate_cypher(generated_cypher)
+
+    print("User question:")
+    print(question)
+    print()
+    print("Generated Cypher:")
+    print(generated_cypher)
+    print()
+    print("Safety validation:")
+    print(validation)
+    print()
+
+    if not validation["safe"]:
+        print("Query was not executed because it failed safety validation.")
+    else:
+        with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+            records, summary, keys = driver.execute_query(
+                generated_cypher,
+                database_=NEO4J_DATABASE
+            )
+
+        print("Neo4j returned rows:")
+        print(len(records))
+        print()
+
+        for record in records:
+            print(record.data())
+
+        print()
+        print("=" * 80)
+        print()
+
+        context_text = format_records_as_context(
+            question,
+            generated_cypher,
+            records
+        )
+
+        print("Context sent to LM Studio for final answer:")
+        print(context_text)
+
+        print()
+        print("=" * 80)
+        print()
+
+        final_answer = generate_final_answer(question, context_text)
+
+        print("Final LM Studio answer:")
+        print(final_answer)
+```
+
+Then press: Ctrl+D
+
+Lets update llm_cypher_execute_once.py to use input() so you can type different questions interactively.
+
+> change the hard-coded question
+question = "who is rajat?"
+into interactive input.
+
+So you can run:
+
+```shell
+python llm_cypher_execute_once.py
+```
+
+and type the question at runtime.
+
+# Step 95 — Make the LLM-Cypher script interactive
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee llm_cypher_execute_once.py
+```
+
+Now paste this full clean version:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from cypher_safety import validate_cypher
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+
+GRAPH_SCHEMA = """
+You are working with a Neo4j customer support graph.
+
+Current relevant node label:
+- Agent: agentId, name, team, location
+
+Current relevant relationship context:
+- (:Ticket)-[:ASSIGNED_TO]->(:Agent)
+
+Important safety rules:
+- Generate exactly one Cypher query.
+- Return only the Cypher query text.
+- Do not explain.
+- Do not use markdown.
+- The query must be read-only.
+- The query must include RETURN.
+- The query must include LIMIT 10.
+- Do not use CREATE, MERGE, DELETE, DETACH, SET, REMOVE, DROP, ALTER, GRANT, DENY, REVOKE, LOAD CSV, SHOW, CALL, or admin commands.
+
+For short person-name questions, use partial case-insensitive matching.
+Use this style:
+
+MATCH (a:Agent)
+WHERE a.name =~ '(?i).*rajat.*'
+RETURN a.agentId, a.name, a.team, a.location
+LIMIT 10
+
+If the user asks about a different short name, replace rajat with the lowercase name from the question.
+"""
+
+
+def clean_generated_cypher(text):
+    cleaned = text.strip()
+
+    if cleaned.startswith("```"):
+        cleaned = cleaned.replace("```cypher", "")
+        cleaned = cleaned.replace("```", "")
+        cleaned = cleaned.strip()
+
+    return cleaned
+
+
+def generate_cypher(question):
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You generate safe read-only Neo4j Cypher. "
+                    "Return only one complete Cypher query and nothing else."
+                )
+            },
+            {
+                "role": "user",
+                "content": GRAPH_SCHEMA + "\n\nUser question:\n" + question
+            }
+        ],
+        temperature=0.0,
+        max_tokens=180
+    )
+
+    return clean_generated_cypher(response.choices[0].message.content)
+
+
+def format_records_as_context(question, generated_cypher, records):
+    lines = []
+    lines.append("User question:")
+    lines.append(question)
+    lines.append("")
+    lines.append("Validated generated Cypher:")
+    lines.append(generated_cypher)
+    lines.append("")
+    lines.append("Neo4j returned rows:")
+
+    if not records:
+        lines.append("No rows were returned.")
+        return "\n".join(lines)
+
+    for index, record in enumerate(records, start=1):
+        lines.append("-" * 60)
+        lines.append("Row " + str(index) + ":")
+        row = record.data()
+
+        for key, value in row.items():
+            lines.append(str(key) + ": " + str(value))
+
+    return "\n".join(lines)
+
+
+def generate_final_answer(question, context_text):
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a support graph assistant. "
+                    "Answer only from the Neo4j rows provided. "
+                    "If the rows do not contain enough information, say what is missing. "
+                    "Keep the answer concise and factual."
+                )
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Original user question:\n"
+                    + question
+                    + "\n\nRetrieved graph context:\n"
+                    + context_text
+                )
+            }
+        ],
+        temperature=0.2,
+        max_tokens=220
+    )
+
+    return response.choices[0].message.content.strip()
+
+
+if __name__ == "__main__":
+    question = input("Enter your SupportGraph question: ").strip()
+
+    if not question:
+        print("No question was entered.")
+    else:
+        generated_cypher = generate_cypher(question)
+        validation = validate_cypher(generated_cypher)
+
+        print()
+        print("User question:")
+        print(question)
+        print()
+        print("Generated Cypher:")
+        print(generated_cypher)
+        print()
+        print("Safety validation:")
+        print(validation)
+        print()
+
+        if not validation["safe"]:
+            print("Query was not executed because it failed safety validation.")
+        else:
+            with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+                records, summary, keys = driver.execute_query(
+                    generated_cypher,
+                    database_=NEO4J_DATABASE
+                )
+
+            print("Neo4j returned rows:")
+            print(len(records))
+            print()
+
+            for record in records:
+                print(record.data())
+
+            print()
+            print("=" * 80)
+            print()
+
+            context_text = format_records_as_context(
+                question,
+                generated_cypher,
+                records
+            )
+
+            print("Context sent to LM Studio for final answer:")
+            print(context_text)
+
+            print()
+            print("=" * 80)
+            print()
+
+            final_answer = generate_final_answer(question, context_text)
+
+            print("Final LM Studio answer:")
+            print(final_answer)
+```
+
+Then press: Ctrl+D
+
+## What we are going to do now
+
+> replace the current Agent-focused prompt with a generic entity discovery prompt.
+
+This will guide the LLM to:
+
+1. search for a matching node first,
+2. return that node’s labels and properties,
+3. return connected node labels/properties and relationship types,
+4. then answer from that discovered context.
+
+# Step 97 — Replace llm_cypher_execute_once.py with generic entity discovery version
+
+```bash
+cd /opt/supportgraph/06_graph_rag_api && \
+tee llm_cypher_execute_once.py
+```
+
+Now paste this full clean version:
+
+```python
+from neo4j import GraphDatabase
+from openai import OpenAI
+
+from cypher_safety import validate_cypher
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+LMSTUDIO_CLIENT = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+LMSTUDIO_MODEL = "nvidia/nemotron-3-nano-4b"
+
+
+GRAPH_SCHEMA = """
+You are working with a Neo4j customer support graph.
+
+Known node labels:
+- Customer
+- Ticket
+- Product
+- Agent
+- Issue
+- KnowledgeArticle
+- DocumentChunk
+
+Known relationships:
+- (:Customer)-[:RAISED]->(:Ticket)
+- (:Ticket)-[:ASSIGNED_TO]->(:Agent)
+- (:Ticket)-[:ABOUT]->(:Product)
+- (:Ticket)-[:HAS_ISSUE]->(:Issue)
+- (:KnowledgeArticle)-[:SOLVES]->(:Issue)
+- (:DocumentChunk)-[:PART_OF]->(:KnowledgeArticle)
+
+Important safety rules:
+- Generate exactly one Cypher query.
+- Return only the Cypher query text.
+- Do not explain.
+- Do not use markdown.
+- The query must be read-only.
+- The query must include RETURN.
+- The query must include LIMIT 10.
+- Do not use CREATE, MERGE, DELETE, DETACH, SET, REMOVE, DROP, ALTER, GRANT, DENY, REVOKE, LOAD CSV, SHOW, CALL, or admin commands.
+- Return scalar/map/list values, not full nodes.
+
+Generic entity discovery guidance:
+- For questions like "who is asha?", "who is rajat?", "what is mobile app?", or "what is payment failure?", do not guess the label first.
+- First search for a matching node by common text properties.
+- Then inspect its labels, properties, relationship types, and connected node labels/properties.
+- Use labels(n), properties(n), type(r), labels(m), and properties(m).
+- Use partial case-insensitive regex matching with (?i).
+
+For a question like "who is asha?", use this style:
+
+MATCH (n)
+WHERE
+    (n.name IS NOT NULL AND n.name =~ '(?i).*asha.*')
+    OR (n.title IS NOT NULL AND n.title =~ '(?i).*asha.*')
+    OR (n.issueType IS NOT NULL AND n.issueType =~ '(?i).*asha.*')
+    OR (n.content IS NOT NULL AND n.content =~ '(?i).*asha.*')
+OPTIONAL MATCH (n)-[r]-(m)
+RETURN
+    labels(n) AS matchedNodeLabels,
+    properties(n) AS matchedNodeProperties,
+    type(r) AS relationshipType,
+    labels(m) AS connectedNodeLabels,
+    properties(m) AS connectedNodeProperties
+LIMIT 10
+
+If the user asks about a different term, replace asha with the lowercase search term from the question.
+"""
+
+
+def clean_generated_cypher(text):
+    cleaned = text.strip()
+
+    if cleaned.startswith("```"):
+        cleaned = cleaned.replace("```cypher", "")
+        cleaned = cleaned.replace("```", "")
+        cleaned = cleaned.strip()
+
+    return cleaned
+
+
+def call_llm_for_cypher(question, repair_instruction=None):
+    user_content = GRAPH_SCHEMA + "\n\nUser question:\n" + question
+
+    if repair_instruction:
+        user_content = (
+            user_content
+            + "\n\nThe previous query failed validation for this reason:\n"
+            + repair_instruction
+            + "\n\nGenerate a corrected complete read-only Cypher query with RETURN and LIMIT 10."
+        )
+
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You generate safe read-only Neo4j Cypher. "
+                    "Return only one complete Cypher query and nothing else."
+                )
+            },
+            {
+                "role": "user",
+                "content": user_content
+            }
+        ],
+        temperature=0.0,
+        max_tokens=500
+    )
+
+    return clean_generated_cypher(response.choices[0].message.content)
+
+
+def generate_validated_cypher(question):
+    generated_cypher = call_llm_for_cypher(question)
+    validation = validate_cypher(generated_cypher)
+
+    if validation["safe"]:
+        return generated_cypher, validation
+
+    repaired_cypher = call_llm_for_cypher(
+        question,
+        validation["reason"]
+    )
+    repaired_validation = validate_cypher(repaired_cypher)
+
+    return repaired_cypher, repaired_validation
+
+
+def format_records_as_context(question, generated_cypher, records):
+    lines = []
+    lines.append("User question:")
+    lines.append(question)
+    lines.append("")
+    lines.append("Validated generated Cypher:")
+    lines.append(generated_cypher)
+    lines.append("")
+    lines.append("Neo4j returned rows:")
+
+    if not records:
+        lines.append("No rows were returned.")
+        return "\n".join(lines)
+
+    for index, record in enumerate(records, start=1):
+        lines.append("-" * 60)
+        lines.append("Row " + str(index) + ":")
+        row = record.data()
+
+        for key, value in row.items():
+            lines.append(str(key) + ": " + str(value))
+
+    return "\n".join(lines)
+
+
+def generate_final_answer(question, context_text):
+    response = LMSTUDIO_CLIENT.chat.completions.create(
+        model=LMSTUDIO_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a support graph assistant. "
+                    "Answer only from the Neo4j rows provided. "
+                    "Use the matched node labels, matched node properties, relationship types, "
+                    "and connected node properties to infer what the entity is. "
+                    "If the rows do not contain enough information, say what is missing. "
+                    "Ignore fields with value None. "
+                    "Keep the answer concise and factual."
+                )
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Original user question:\n"
+                    + question
+                    + "\n\nRetrieved graph context:\n"
+                    + context_text
+                )
+            }
+        ],
+        temperature=0.2,
+        max_tokens=260
+    )
+
+    return response.choices[0].message.content.strip()
+
+
+if __name__ == "__main__":
+    question = input("Enter your SupportGraph question: ").strip()
+
+    if not question:
+        print("No question was entered.")
+    else:
+        generated_cypher, validation = generate_validated_cypher(question)
+
+        print()
+        print("User question:")
+        print(question)
+        print()
+        print("Generated Cypher:")
+        print(generated_cypher)
+        print()
+        print("Safety validation:")
+        print(validation)
+        print()
+
+        if not validation["safe"]:
+            print("Query was not executed because it failed safety validation.")
+        else:
+            with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+                records, summary, keys = driver.execute_query(
+                    generated_cypher,
+                    database_=NEO4J_DATABASE
+                )
+
+            print("Neo4j returned rows:")
+            print(len(records))
+            print()
+
+            for record in records:
+                print(record.data())
+
+            print()
+            print("=" * 80)
+            print()
+
+            context_text = format_records_as_context(
+                question,
+                generated_cypher,
+                records
+            )
+
+            print("Context sent to LM Studio for final answer:")
+            print(context_text)
+
+            print()
+            print("=" * 80)
+            print()
+
+            final_answer = generate_final_answer(question, context_text)
+
+            print("Final LM Studio answer:")
+            print(final_answer)
+```
+
+Then press: Ctrl+D
