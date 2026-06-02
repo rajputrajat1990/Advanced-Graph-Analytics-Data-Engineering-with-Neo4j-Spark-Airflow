@@ -4674,6 +4674,34 @@ cd /opt/supportgraph/06_graph_rag_api && \
 tee test_supportgraph_read.py
 ```
 
+Now paste this Python code:
+
+```python
+from neo4j import GraphDatabase
+
+NEO4J_URI = "neo4j" + "://localhost:7687"
+NEO4J_AUTH = ("neo4j", "SupportGraph@123")
+NEO4J_DATABASE = "neo4j"
+
+QUERY = """
+MATCH (n)
+RETURN labels(n) AS labels, count(n) AS nodeCount
+ORDER BY labels
+"""
+
+with GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH) as driver:
+    records, summary, keys = driver.execute_query(
+        QUERY,
+        database_=NEO4J_DATABASE
+    )
+
+    print("SupportGraph node counts:")
+    for record in records:
+        print(f"{record['labels']}: {record['nodeCount']}")
+```
+
+Then press: Ctrl+D
+
 # Step 36 — Run the SupportGraph data read smoke test
 
 ```shell
